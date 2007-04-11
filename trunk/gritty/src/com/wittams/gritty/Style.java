@@ -1,0 +1,144 @@
+/**
+ * 
+ */
+package com.wittams.gritty;
+
+import java.awt.Color;
+import java.lang.ref.WeakReference;
+import java.util.EnumSet;
+import java.util.WeakHashMap;
+
+
+class Style implements Cloneable{
+	static int count = 1;
+	
+	static class ChosenColor extends Color{
+		private static final long serialVersionUID = 7492667732033832704L;
+
+		public ChosenColor(final Color def) {
+			super(def.getRGB());
+		}
+	}
+	
+	static final ChosenColor FOREGROUND = new ChosenColor(Color.BLACK);
+	static final ChosenColor BACKGROUND = new ChosenColor(Color.WHITE);
+	
+	static enum StyleOptions{
+		BOLD,
+		BLINK,
+		DIM,
+		REVERSE
+	}
+	
+	public static final Style EMPTY = new Style();
+	private static final WeakHashMap<Style, WeakReference<Style> > styles = new WeakHashMap<Style, WeakReference<Style>>();
+	
+	
+	public static Style getCanonicalStyle(Style currentStyle) {
+		final WeakReference<Style> canonRef = styles.get(currentStyle);
+		if(canonRef != null){
+			final Style canonStyle = canonRef.get();
+			if(canonStyle != null){
+				return canonStyle;
+			}
+		}
+		styles.put(currentStyle , new WeakReference<Style>(currentStyle) );
+		return currentStyle;
+	}
+	
+	
+	private Color foreground;
+	private Color background;
+	private EnumSet<StyleOptions> options;
+	private int number; 
+	
+	Style(){
+		number = count++;
+		foreground = FOREGROUND;
+		background = BACKGROUND;
+		options = EnumSet.noneOf(StyleOptions.class); 
+	}
+	
+	Style(final Color foreground, final Color background, final EnumSet<StyleOptions> options){
+		number = count++;
+		this.foreground = foreground;
+		this.background = background;
+		this.options = options.clone(); 
+	}
+	
+	void setForeground(final Color foreground) {
+		this.foreground = foreground;
+	}
+
+	Color getForeground() {
+		return foreground;
+	}
+
+	void setBackground(final Color background) {
+		this.background = background;
+	}
+
+	Color getBackground() {
+		return background;
+	}
+	
+	public void setOption(final StyleOptions opt, final boolean val) {
+		if(val) 
+			options.add(opt);
+		else 
+			options.remove(opt);
+	}
+
+	@Override
+	public Style clone(){
+		return new Style(getForeground(), getBackground(), options);
+	}
+
+	public int getNumber() {
+		return number;
+	}
+
+	public boolean hasOption(final StyleOptions bold) {
+		return options.contains(bold);
+	}
+	
+	@Override
+	public int hashCode() {
+		final int PRIME = 31;
+		int result = 1;
+		result = PRIME * result + (background == null ? 0 : background.hashCode());
+		result = PRIME * result + (foreground == null ? 0 : foreground.hashCode());
+		result = PRIME * result + (options == null ? 0 : options.hashCode() );
+		return result;
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final Style other = (Style) obj;
+		if (background == null) {
+			if (other.background != null)
+				return false;
+		} else if (!background.equals(other.background))
+			return false;
+		if (foreground == null) {
+			if (other.foreground != null)
+				return false;
+		} else if (!foreground.equals(other.foreground))
+			return false;
+		if (options == null) {
+			if (other.options != null)
+				return false;
+		} else if (!options.equals(other.options))
+			return false;
+		return true;
+	}
+
+
+	
+}

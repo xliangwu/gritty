@@ -1,0 +1,289 @@
+package com.wittams.gritty;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.util.Arrays;
+
+import org.apache.log4j.Logger;
+
+public class CharacterTerm implements Term {
+	private static final Logger logger = Logger.getLogger(CharacterTerm.class);
+	private static final char EMPTY_CHAR = ' '; // (char) 0x0;
+
+	private transient char[] buf;
+	private transient Style[] styleBuf;
+	
+	private transient Style currentStyle = Style.EMPTY;
+
+	private transient int width;
+	private transient int height;
+	
+	CharacterTerm(final int width, final int height) {
+		allocateBuffers(width, height);
+	}
+
+	private void rollStyle() {
+		currentStyle = currentStyle.clone();		
+	}
+	
+	private Style getCanonicalStyle() {
+		return Style.getCanonicalStyle(currentStyle);
+	}
+	
+	private void allocateBuffers(final int width, final int height) {
+		this.width = width;
+		this.height = height;
+		
+		buf = new char[width * height];
+		Arrays.fill(buf, EMPTY_CHAR);
+		
+		styleBuf = new Style[width * height];
+		Arrays.fill(styleBuf, Style.EMPTY);
+	}
+
+	public Dimension doResize(final Dimension pendingResize, final ResizeOrigin origin ) {
+		final char [] oldBuf = buf;
+		final Style [] oldStyleBuf = styleBuf;
+		final int oldHeight = height;
+		final int oldWidth = width;
+		allocateBuffers(pendingResize.width, pendingResize.height);
+		
+		clear();
+		
+		// copying lines... 
+		final int copyWidth = Math.min(oldWidth, width);
+		final int copyHeight = Math.min(oldHeight, height);
+		
+		final int oldStart = oldHeight - copyHeight;
+		final int start = height - copyHeight;
+		
+		for(int i = 0; i < copyHeight; i++){
+			System.arraycopy(oldBuf, (oldStart + i) * oldWidth, buf, (start + i) * width , copyWidth);
+			System.arraycopy(oldStyleBuf, (oldStart + i) * oldWidth, styleBuf, (start + i) * width , copyWidth);
+		}
+		return pendingResize;
+	}
+
+	public void clear() {
+		Arrays.fill(buf, EMPTY_CHAR);
+	}
+
+	public void clearArea(final int leftX, final int topY, final int rightX, final int bottomY) {
+		if(topY > bottomY )
+			logger.error("Attempt to clear upside down area: top:" + topY + " > bottom:" + bottomY);
+		
+		for (int y = topY; y < bottomY; y++)
+			if (y > height - 1 || y < 0)
+				logger.error("attempt to clear line" + y + "\n" +
+						   		"args were x1:" + leftX + " y1:" + topY + " x2:"
+						   		+ rightX + "y2:" + bottomY);
+			else if (leftX > rightX)
+				logger.error("Attempt to clear backwards area: left:" + leftX + " > right:" + rightX);
+			else {
+				Arrays.fill(buf, 
+						   y * width + leftX, 
+						   y * width + rightX,
+							EMPTY_CHAR);
+				Arrays.fill(styleBuf,
+							y * width + leftX, 
+						    y * width + rightX,
+						    Style.EMPTY
+						);
+			}
+	}
+
+	public void drawBytes(final byte[] bytes, final int s, final int len, final int x, final int y) {
+		final int adjY = y - 1;
+		if (adjY >= height || adjY < 0) {
+			if(logger.isDebugEnabled()){ 
+				StringBuffer sb = new StringBuffer("Attempt to draw line ")
+				.append(adjY)
+				.append(" at (")
+				.append(x)
+				.append(",")
+				.append(y)
+				.append(")");
+				
+				CharacterUtils.appendBuf(sb, bytes, s, len);
+				logger.debug(sb);
+			}
+			return;
+		}
+
+		for (int i = 0; i < len; i++) {
+			final int location = adjY * width + x + i;
+			buf[location] = (char) bytes[s + i];
+			styleBuf[location] = getCanonicalStyle();
+		}
+	}
+
+	
+
+	public void drawString(final String str, final int x, final int y) {
+		final int adjY = y - 1;
+		if (adjY >= height || adjY < 0) {
+			if(logger.isDebugEnabled())
+				logger.debug("Attempt to draw line out of bounds: " + adjY + " at (" + x + "," + y + ")");
+			return;
+		}
+		str.getChars(0, str.length() - 1, buf, adjY * width + x);
+		for(int i = 0; i < str.length(); i++ ){
+			final int location = adjY * width + x + i;
+			styleBuf[location] = getCanonicalStyle();
+		}
+	}
+
+	public void scrollArea(final int y, final int h, final int dy) {
+		final int lastLine = y + h;
+		if (dy > 0)
+			// Moving lines down
+			for (int l = lastLine - dy; l >= y; l--) {
+				if( l < 0 ){
+					logger.error("Attempt to scroll line from above top of screen:" + l);
+					continue;
+				}
+				if( l + dy + 1 > height ){
+					logger.error("Attempt to scroll line off bottom of screen:" + (l+ dy) );
+					continue;
+				}
+				System.arraycopy(buf, l * width, buf, (l + dy) * width, width);
+				System.arraycopy(styleBuf, l * width, styleBuf, (l + dy) * width, width);
+			}
+		else
+			// Moving lines up
+			for (int l = y + dy + 1; l < lastLine; l++) {
+				if( l > height - 1 ){
+					logger.error("Attempt to scroll line from below bottom of screen:" + l);
+					continue;
+				}
+				if( l + dy < 0 ){
+					logger.error("Attempt to scroll to line off top of screen" + (l+ dy) );
+					continue;
+				}
+				
+				System.arraycopy(buf, l * width, buf, (l + dy) * width, width);
+				System.arraycopy(styleBuf, l * width, styleBuf, (l + dy) * width, width);
+			}
+	}
+
+	public void setBold(final boolean val) {
+		rollStyle();
+		currentStyle.setOption(Style.StyleOptions.BOLD, val);
+	}
+
+	public void resetColors() {
+		rollStyle();
+		currentStyle.setForeground(Style.FOREGROUND);
+		currentStyle.setBackground(Style.BACKGROUND);
+	}
+
+	public void setCurrentBackground(final Color bg) {
+		rollStyle();
+		currentStyle.setBackground(bg);
+	}
+
+	public void setCurrentForeground(final Color fg) {
+		rollStyle();
+		currentStyle.setForeground(fg);
+	}
+
+	public void setReverseVideo() {
+		rollStyle();
+		currentStyle.setOption(Style.StyleOptions.REVERSE, true);
+	}
+
+	public String getStyleLines(){
+		final StringBuilder sb = new StringBuilder();
+		for (int row = 0; row < height; row++) {
+			for(int col = 0; col < width; col++){
+				final Style style = styleBuf[row * width + col];
+				int styleNum = style == null?  styleNum = 0 : style.getNumber();
+				sb.append(String.format("%03d ",styleNum ));
+			}
+			sb.append("\n");
+		}
+		return sb.toString();
+	}
+
+	public String getLines() {
+		final StringBuffer sb = new StringBuffer();
+		for (int row = 0; row < height; row++) {
+			sb.append(buf, row * width, width);
+			sb.append('\n');
+		}
+		return sb.toString();
+	}
+
+	public void pumpRuns(final int x, final int y, final int w, final int h, final StyledRunConsumer consumer){
+		final int startRow = y;
+		final int endRow = y + h;
+		final int startCol = x;
+		final int endCol = x + w;
+		
+		
+		for(int row = startRow ; row < endRow ; row++ ){
+			
+			Style lastStyle = null;
+			int beginRun = startCol;
+			for(int col = startCol; col < endCol; col++ ){
+				final int location = row * width + col;
+				if(location < 0 || location > styleBuf.length ){
+					logger.error("Requested out of bounds runs:" + "x:" +x +" y:" +y +" w:" +w + " h:" +h);
+					continue;
+				}
+				final Style cellStyle = styleBuf[ location ];
+				if(lastStyle == null)
+					//begin line
+					lastStyle = cellStyle;
+				else if(!cellStyle.equals(lastStyle)){ 
+					//start of new run
+					consumer.run(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
+					beginRun = col;
+					lastStyle = cellStyle;
+				}
+			}
+			//end row
+			if(lastStyle == null)
+				logger.error("Style is null for run supposed to be from "+ beginRun + " to " + endCol + "on row " + row);
+			else
+				consumer.run(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
+		}
+	}
+	
+	// Not stored
+	public void redraw(final int x, final int y, final int width, final int height) {
+		
+	}
+	
+	// Not stored
+	public void setCursor(final int x, final int y) {
+
+	}
+	
+	// Not stored
+	public void drawCursor() {
+	
+	}
+	
+	// Not stored
+	public void beep() {
+	
+	}
+
+	public int getCharHeight() {
+		return 1;
+	}
+
+	public int getCharWidth() {
+		return 1;
+	}
+
+	public int getColumnCount() {
+		return width;
+	}
+
+	public int getRowCount() {
+		return height;
+	}
+
+}
