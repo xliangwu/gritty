@@ -3,6 +3,7 @@ package com.wittams.gritty;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.util.Arrays;
+import java.util.BitSet;
 
 import org.apache.log4j.Logger;
 
@@ -10,13 +11,14 @@ public class CharacterTerm implements Term {
 	private static final Logger logger = Logger.getLogger(CharacterTerm.class);
 	private static final char EMPTY_CHAR = ' '; // (char) 0x0;
 
-	private transient char[] buf;
-	private transient Style[] styleBuf;
+	private  char[] buf;
+	private  Style[] styleBuf;
+	private BitSet damage;
 	
-	private transient Style currentStyle = Style.EMPTY;
+	private  Style currentStyle = Style.EMPTY;
 
-	private transient int width;
-	private transient int height;
+	private int width;
+	private int height;
 	
 	CharacterTerm(final int width, final int height) {
 		allocateBuffers(width, height);
@@ -39,6 +41,8 @@ public class CharacterTerm implements Term {
 		
 		styleBuf = new Style[width * height];
 		Arrays.fill(styleBuf, Style.EMPTY);
+		
+		damage = new BitSet(width * height);
 	}
 
 	public Dimension doResize(final Dimension pendingResize, final ResizeOrigin origin ) {
@@ -61,11 +65,15 @@ public class CharacterTerm implements Term {
 			System.arraycopy(oldBuf, (oldStart + i) * oldWidth, buf, (start + i) * width , copyWidth);
 			System.arraycopy(oldStyleBuf, (oldStart + i) * oldWidth, styleBuf, (start + i) * width , copyWidth);
 		}
+		
+		damage.set(0, width * height -1 , true);
+		
 		return pendingResize;
 	}
 
 	public void clear() {
 		Arrays.fill(buf, EMPTY_CHAR);
+		damage.set(0, width * height , true);
 	}
 
 	public void clearArea(final int leftX, final int topY, final int rightX, final int bottomY) {
@@ -89,21 +97,20 @@ public class CharacterTerm implements Term {
 						    y * width + rightX,
 						    Style.EMPTY
 						);
+				damage.set( y * width + leftX, 
+						    y * width + rightX, 
+						    true);
 			}
 	}
 
 	public void drawBytes(final byte[] bytes, final int s, final int len, final int x, final int y) {
 		final int adjY = y - 1;
 		if (adjY >= height || adjY < 0) {
-			if(logger.isDebugEnabled()){ 
+			if (logger.isDebugEnabled()) {
 				StringBuffer sb = new StringBuffer("Attempt to draw line ")
-				.append(adjY)
-				.append(" at (")
-				.append(x)
-				.append(",")
-				.append(y)
-				.append(")");
-				
+						.append(adjY).append(" at (").append(x).append(",")
+						.append(y).append(")");
+
 				CharacterUtils.appendBuf(sb, bytes, s, len);
 				logger.debug(sb);
 			}
@@ -112,12 +119,11 @@ public class CharacterTerm implements Term {
 
 		for (int i = 0; i < len; i++) {
 			final int location = adjY * width + x + i;
-			buf[location] = (char) bytes[s + i];
+			buf[location] = (char) bytes[s + i]; // Arraycopy does not convert
 			styleBuf[location] = getCanonicalStyle();
 		}
+		damage.set(adjY * width + x, adjY * width + x + len );
 	}
-
-	
 
 	public void drawString(final String str, final int x, final int y) {
 		final int adjY = y - 1;
@@ -131,38 +137,41 @@ public class CharacterTerm implements Term {
 			final int location = adjY * width + x + i;
 			styleBuf[location] = getCanonicalStyle();
 		}
+		damage.set(adjY * width + x, adjY * width + x + str.length() );
 	}
 
 	public void scrollArea(final int y, final int h, final int dy) {
 		final int lastLine = y + h;
 		if (dy > 0)
 			// Moving lines down
-			for (int l = lastLine - dy; l >= y; l--) {
-				if( l < 0 ){
-					logger.error("Attempt to scroll line from above top of screen:" + l);
+			for (int line = lastLine - dy; line >= y; line--) {
+				if( line < 0 ){
+					logger.error("Attempt to scroll line from above top of screen:" + line);
 					continue;
 				}
-				if( l + dy + 1 > height ){
-					logger.error("Attempt to scroll line off bottom of screen:" + (l+ dy) );
+				if( line + dy + 1 > height ){
+					logger.error("Attempt to scroll line off bottom of screen:" + (line+ dy) );
 					continue;
 				}
-				System.arraycopy(buf, l * width, buf, (l + dy) * width, width);
-				System.arraycopy(styleBuf, l * width, styleBuf, (l + dy) * width, width);
+				System.arraycopy(buf, line * width, buf, (line + dy) * width, width);
+				System.arraycopy(styleBuf, line * width, styleBuf, (line + dy) * width, width);
+				damage.set( (line + dy) * width, (line + dy + 1) * width );
 			}
 		else
 			// Moving lines up
-			for (int l = y + dy + 1; l < lastLine; l++) {
-				if( l > height - 1 ){
-					logger.error("Attempt to scroll line from below bottom of screen:" + l);
+			for (int line = y + dy + 1; line < lastLine; line++) {
+				if( line > height - 1 ){
+					logger.error("Attempt to scroll line from below bottom of screen:" + line);
 					continue;
 				}
-				if( l + dy < 0 ){
-					logger.error("Attempt to scroll to line off top of screen" + (l+ dy) );
+				if( line + dy < 0 ){
+					logger.error("Attempt to scroll to line off top of screen" + (line+ dy) );
 					continue;
 				}
 				
-				System.arraycopy(buf, l * width, buf, (l + dy) * width, width);
-				System.arraycopy(styleBuf, l * width, styleBuf, (l + dy) * width, width);
+				System.arraycopy(buf, line * width, buf, (line + dy) * width, width);
+				System.arraycopy(styleBuf, line * width, styleBuf, (line + dy) * width, width);
+				damage.set( (line + dy) * width, (line + dy + 1) * width );
 			}
 	}
 
@@ -212,6 +221,22 @@ public class CharacterTerm implements Term {
 			sb.append('\n');
 		}
 		return sb.toString();
+	}
+	
+	public String getDamageLines(){
+		final StringBuffer sb = new StringBuffer();
+		for (int row = 0; row < height; row++){
+			for(int col = 0; col < width; col++){
+				boolean isDamaged = damage.get( row * width + col);
+				sb.append( isDamaged ? 'X' : '-');
+			}
+			sb.append("\n");
+		}
+		return sb.toString();
+	}
+	
+	public void resetDamage(){
+		damage.clear();
 	}
 
 	public void pumpRuns(final int x, final int y, final int w, final int h, final StyledRunConsumer consumer){

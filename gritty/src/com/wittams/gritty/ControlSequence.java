@@ -50,7 +50,7 @@ public class ControlSequence {
 		int pos = -1;
 
 		bufferVersion = channel.serial;
-		startInBuf = channel.bufs;
+		startInBuf = channel.offset;
 
 		while (true) {
 			final byte b = channel.getChar();
@@ -77,7 +77,7 @@ public class ControlSequence {
 				addUnhandled(b);
 		}
 		if (bufferVersion == channel.serial)
-			lengthInBuf = channel.bufs - startInBuf;
+			lengthInBuf = channel.offset - startInBuf;
 		else
 			lengthInBuf = -1;
 		argc += seenDigit;

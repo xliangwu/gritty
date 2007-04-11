@@ -93,7 +93,7 @@ class StateMachine {
 				} else{
 					channel.pushChar(b);
 					final int availableChars = channel.advanceThroughASCII(tw.distanceToLineEnd());
-					tw.writeASCII(channel.buf, channel.bufs - availableChars, availableChars);
+					tw.writeASCII(channel.buf, channel.offset - availableChars, availableChars);
 				}
 				tw.scrollY();
 			}
@@ -273,11 +273,14 @@ class StateMachine {
 		for (int i = 0; i < argCount; i++) {
 			final int num = args.getArg(i, -1);
 			Mode mode = null;
-			if (num >= 0 && num < modeTable.length)
+			if (num >= 0 && num < modeTable.length){
 				mode = modeTable[num];
-			if (mode == null)
+			}
+			
+			
+			if (mode == null){
 				if(logger.isInfoEnabled()) logger.info("Unknown mode " + num);
-			else if (on) {
+			}else if (on) {
 				if(logger.isInfoEnabled()) logger.info("Modes: adding " + mode);
 				modes.add(mode);
 				synchronized (tw) {
