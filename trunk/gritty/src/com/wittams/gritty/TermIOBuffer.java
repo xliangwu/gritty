@@ -15,9 +15,9 @@ class TermIOBuffer {
 	
 	byte[] buf = new byte[1024];
 
-	int bufs = 0;
+	int offset = 0;
 
-	int buflen = 0;
+	int length = 0;
 
 	int serial;
 
@@ -29,11 +29,11 @@ class TermIOBuffer {
 	}
 
 	byte getChar() throws java.io.IOException {
-		if (buflen == 0)
+		if (length == 0)
 			fillBuf();
-		buflen--;
+		length--;
 
-		return buf[bufs++];
+		return buf[offset++];
 	}
 
 	public void appendBuf(final StringBuffer sb, final int begin, final int length) {
@@ -41,37 +41,43 @@ class TermIOBuffer {
 	}
 
 	private void fillBuf() throws java.io.IOException {
-		buflen = bufs = 0;
-		buflen = in.read(buf, bufs, buf.length - bufs);
+		length = offset = 0;
+		length = in.read(buf, offset, buf.length - offset);
 		serial++;
 
-		if (buflen <= 0) {
-			buflen = 0;
+		if (length <= 0) {
+			length = 0;
 			throw new IOException("fillBuf");
 		}
 	}
 
-	void pushChar(final byte foo) throws java.io.IOException {
-		buflen++;
-		buf[--bufs] = foo;
+	void pushChar(final byte b) throws java.io.IOException {
+		if(offset == 0){
+			// Pushed back too many... shift it up to the end.
+			offset = buf.length - length;
+			System.arraycopy(buf, 0, buf, offset, length);
+		}
+		
+		length++;
+		buf[--offset] = b;
 	}
 
 	int advanceThroughASCII(int toLineEnd) throws java.io.IOException {
-		if (buflen == 0)
+		if (length == 0)
 			fillBuf();
 
-		int len = toLineEnd > buflen ? buflen : toLineEnd;
+		int len = toLineEnd > length ? length : toLineEnd;
 		
 		final int origLen = len;
 		byte tmp;
 		while (len > 0) {
-			tmp = buf[bufs++];
+			tmp = buf[offset++];
 			if (0x20 <= tmp && tmp <= 0x7f) {
-				buflen--;
+				length--;
 				len--;
 				continue;
 			}
-			bufs--;
+			offset--;
 			break;
 		}		
 		return origLen - len;
@@ -80,10 +86,6 @@ class TermIOBuffer {
 	void sendBytes(final byte[] bytes) throws IOException {
 		out.write(bytes);
 		out.flush();
-		/*
-		 * System.out.print("Written " + bytes.length + " bytes.");
-		 * printBuf(System.out, bytes, 0, bytes.length); System.out.println();
-		 */
 	}
 
 	public void postResize(final Dimension termSize, final Dimension pixelSize) {

@@ -638,20 +638,16 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 		backBuffer.resetColors();
 	}
 
-	public String getBackingLines() {
-		return backBuffer.getLines();
-	}
-
-	public String getStyleLines() {
-		return backBuffer.getStyleLines();
-	}
-
-	public String getScrollLines() {
-		return scrollBuffer.getLines();
-	}
-
 	public BoundedRangeModel getBoundedRangeModel() {
 		return brm ;
+	}
+
+	public CharacterTerm getBackBuffer() {
+		return backBuffer;
+	}
+
+	public ScrollBuffer getScrollBuffer() {
+		return scrollBuffer;
 	}
 	
 }

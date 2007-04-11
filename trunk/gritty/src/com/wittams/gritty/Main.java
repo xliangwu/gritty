@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.swing.AbstractAction;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -21,11 +22,15 @@ import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
@@ -48,11 +53,6 @@ public class Main {
 	private GrittyTerminal terminal;
 
 	private AbstractAction openAction = new AbstractAction("Open SHELL Session..."){
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = -8500072482164145078L;
-
 		public void actionPerformed(final ActionEvent e) {
 			if (connectThread == null)
 				openSession();
@@ -60,16 +60,19 @@ public class Main {
 	};
 	
 	private AbstractAction showBuffersAction = new AbstractAction("Show buffers") {
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = -3469683300590246615L;
-
 		public void actionPerformed(final ActionEvent e) {
 			if(bufferFrame == null)
 				showBuffers();
 		}
 	};
+	
+	private AbstractAction resetDamage = new AbstractAction("Reset damage") {
+		public void actionPerformed(final ActionEvent e) {
+			if(termPanel != null)
+				termPanel.getBackBuffer().resetDamage();
+		}
+	};
+	
 	
 	private final JMenuBar getJMenuBar() {
 		final JMenuBar mb = new JMenuBar();
@@ -80,6 +83,7 @@ public class Main {
 		final JMenu dm = new JMenu("Debug");
 		
 		dm.add(showBuffersAction);
+		dm.add(resetDamage);
 		mb.add(dm);
 
 		return mb;
@@ -137,6 +141,8 @@ public class Main {
 	}
 
 	public static void main(final String[] arg) {
+		BasicConfigurator.configure();
+		Logger.getRootLogger().setLevel(Level.INFO);
 		new Main();
 	}
 	
@@ -144,18 +150,19 @@ public class Main {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				bufferFrame = new JFrame("buffers");
-				final JTextPane area = new JTextPane();
+				final JTextArea area = new JTextArea();
 				final JPanel panel = new JPanel(new BorderLayout());
 				
 				panel.add(area, BorderLayout.NORTH);
 				
-				final String[] choices = {"Back", "Back style", "Scroll"}; 
+				final String[] choices = {"Back", "Back style", "Back damage", "Scroll"}; 
 				
 				final JComboBox chooser = new JComboBox(choices);
 				panel.add(chooser, BorderLayout.NORTH);
 				
 				area.setFont(Font.decode("Monospaced-14"));
 				panel.add(new JScrollPane(area), BorderLayout.CENTER);
+				
 				
 				bufferFrame.getContentPane().add(panel);
 				bufferFrame.pack();
@@ -165,10 +172,11 @@ public class Main {
 				class Updater implements ActionListener, ItemListener{
 					void update(){
 						final int choice = chooser.getSelectedIndex();
-						final String text = choice == 0 ? termPanel.getBackingLines() 
-								    : choice == 1 ? termPanel.getStyleLines()
-								    : termPanel.getScrollLines();
-						
+						final String text = 
+							          choice == 0 ? termPanel.getBackBuffer().getLines() 
+								    : choice == 1 ? termPanel.getBackBuffer().getStyleLines()
+								    : choice == 2 ? termPanel.getBackBuffer().getDamageLines() 
+								    :               termPanel.getScrollBuffer().getLines() ;
 						area.setText(text);
 					}
 					
