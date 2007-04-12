@@ -262,7 +262,7 @@ public class CharacterTerm implements Term {
 					lastStyle = cellStyle;
 				else if(!cellStyle.equals(lastStyle)){ 
 					//start of new run
-					consumer.run(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
+					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
 					beginRun = col;
 					lastStyle = cellStyle;
 				}
@@ -271,7 +271,7 @@ public class CharacterTerm implements Term {
 			if(lastStyle == null)
 				logger.error("Style is null for run supposed to be from "+ beginRun + " to " + endCol + "on row " + row);
 			else
-				consumer.run(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
+				consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
 		}
 	}
 	

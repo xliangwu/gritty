@@ -18,7 +18,7 @@ final class SelectionRunConsumer implements StyledRunConsumer {
 		this.begin = begin;
 	}
 
-	public void run(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
+	public void consumeRun(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
 		int startPos = start;
 		int extent = len;
 		

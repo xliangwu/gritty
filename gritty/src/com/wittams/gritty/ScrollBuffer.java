@@ -88,7 +88,7 @@ public class ScrollBuffer implements StyledRunConsumer {
 				} else
 					runEnd = runStarts[i + 1] ;
 				
-				consumer.run(x, y, runStyles[i] , buf, runStart, runEnd - runStart );
+				consumer.consumeRun(x, y, runStyles[i] , buf, runStart, runEnd - runStart );
 				x+= runEnd - runStart;
 				if(last) break;
 			}
@@ -121,7 +121,7 @@ public class ScrollBuffer implements StyledRunConsumer {
 		final StringBuffer sb = new StringBuffer();
 		
 		final StyledRunConsumer consumer = new StyledRunConsumer(){
-			public void run(int x, int y, Style style, char[] buf, int start, int len) {
+			public void consumeRun(int x, int y, Style style, char[] buf, int start, int len) {
 				if(x == 0) sb.append('\n');
 				sb.append(buf,start, len);
 			}
@@ -135,7 +135,7 @@ public class ScrollBuffer implements StyledRunConsumer {
 		return sb.toString();
 	}
 
-	public synchronized void  run(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
+	public synchronized void  consumeRun(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
 		currentRun++;
 		final boolean isNewLine = x == 0;
 		if(isNewLine) totalLines++;
