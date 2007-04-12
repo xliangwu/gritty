@@ -48,7 +48,7 @@ public class Main {
 
 	private String user = System.getProperty("user.name").toLowerCase();
 
-	private String host = "wittams.com";
+	private String host = "localhost";
 
 	private GrittyTerminal terminal;
 
@@ -97,7 +97,7 @@ public class Main {
 	Main() {
 		terminal = new GrittyTerminal();
 		termPanel = terminal.getTermPanel();
-		final JFrame frame = new JFrame("JCTerm");
+		final JFrame frame = new JFrame("Gritty");
 
 		frame.addWindowListener(new WindowAdapter() {
 			@Override
