@@ -509,7 +509,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 		}
 	}
 
-	public void run(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
+	public void consumeRun(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
 		gfx.setColor(style.getBackground());
 		gfx.fillRect(x * charSize.width, (y - clientScrollOrigin) * charSize.height, len * charSize.width, charSize.height);
 		
