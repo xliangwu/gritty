@@ -245,7 +245,6 @@ public class CharacterTerm implements Term {
 		final int startCol = x;
 		final int endCol = x + w;
 		
-		
 		for(int row = startRow ; row < endRow ; row++ ){
 			
 			Style lastStyle = null;
@@ -257,10 +256,10 @@ public class CharacterTerm implements Term {
 					continue;
 				}
 				final Style cellStyle = styleBuf[ location ];
-				if(lastStyle == null)
+				if(lastStyle == null){
 					//begin line
 					lastStyle = cellStyle;
-				else if(!cellStyle.equals(lastStyle)){ 
+				}else if(!cellStyle.equals(lastStyle)){ 
 					//start of new run
 					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
 					beginRun = col;
@@ -271,6 +270,45 @@ public class CharacterTerm implements Term {
 			if(lastStyle == null)
 				logger.error("Style is null for run supposed to be from "+ beginRun + " to " + endCol + "on row " + row);
 			else
+				consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
+		}
+	}
+	
+	public void pumpRunsFromDamage(final StyledRunConsumer consumer) {
+		final int startRow = 0;
+		final int endRow = height;
+		final int startCol = 0;
+		final int endCol = width;
+		
+		for(int row = startRow ; row < endRow ; row++ ){
+			
+			Style lastStyle = null;
+			int beginRun = startCol;
+			for(int col = startCol; col < endCol; col++ ){
+				final int location = row * width + col;
+				if(location < 0 || location > styleBuf.length ){
+					logger.error("Requested out of bounds runs: pumpFromDamage");
+					continue;
+				}
+				final Style cellStyle = styleBuf[ location ];
+				final boolean isDamaged = damage.get(location);
+				if(!isDamaged){
+					if(lastStyle != null) 
+						consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
+					beginRun = col;
+					lastStyle = null;
+				}else if(lastStyle == null){
+					//begin damaged run
+					lastStyle = cellStyle;
+				}else if(!cellStyle.equals(lastStyle)){ 
+					//start of new run
+					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
+					beginRun = col;
+					lastStyle = cellStyle;
+				}
+			}
+			//end row
+			if(lastStyle != null)
 				consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
 		}
 	}
@@ -311,4 +349,6 @@ public class CharacterTerm implements Term {
 		return height;
 	}
 
+	
+	
 }

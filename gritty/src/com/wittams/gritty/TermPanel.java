@@ -188,14 +188,17 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 			    if( clientScrollOrigin != newOrigin){
 			    	drawCursor();
 			    	drawSelection();
+			    	final int oldOrigin = clientScrollOrigin;
 			    	clientScrollOrigin = newOrigin;
-			    	redraw(0, 0, termSize.width, termSize.height );
+			    	clientScrollOriginChanged(oldOrigin);
 			    	drawSelection();
 			    	drawCursor();
 			    }
 			}
 		});
 	}
+	
+	
 	
 	private Point panelToCharCoords(final Point p) {
 		return new Point(p.x / charSize.width, p.y / charSize.height + clientScrollOrigin);
@@ -323,9 +326,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	public void setResizePanelDelegate(final ResizePanelDelegate resizeDelegate) {
 		resizePanelDelegate = resizeDelegate;
 	}
-
-
-
+	
 	private void establishFontMetrics() {
 		final BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
 		final Graphics2D graphics = img.createGraphics();
@@ -519,30 +520,73 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 		gfx.drawChars(buf, start, len, x * charSize.width, (y + 1 - clientScrollOrigin) * charSize.height - descent);
 	}
 	
+	private void clientScrollOriginChanged(int oldOrigin) {
+		int dy = clientScrollOrigin - oldOrigin  ;
+		
+		int dyPix = dy * charSize.height;
+		
+		gfx.copyArea(0, Math.max(0 , dyPix)  , 
+				     getPixelWidth() , getPixelHeight() - Math.abs(dyPix), 
+				     0, -dyPix );
+		
+		if(dy < 0){
+			//Scrolling up; Copied down
+			// New area at the top to be filled in - can only be from scroll buffer
+			//
+			
+			scrollBuffer.pumpRuns(clientScrollOrigin, -dy, this);
+		}else{
+			//Scrolling down; Copied up
+			// New area at the bottom to be filled - can be from both
+			
+			int oldEnd = oldOrigin + termSize.height;
+			
+			// Either its the whole amount above the back buffer + some more 
+			// Or its the whole amount we moved
+			// Or we are already out of the scroll buffer
+			int portionInScroll = oldEnd < 0 ? Math.min(-oldEnd, dy) : 0; 
+			
+			int portionInBackBuffer = dy - portionInScroll ;
+			
+			if(portionInScroll > 0 ){
+				scrollBuffer.pumpRuns( oldEnd, portionInScroll, this);
+			}
+			
+			if(portionInBackBuffer > 0){
+				backBuffer.pumpRuns(0, oldEnd + portionInScroll , termSize.width, portionInBackBuffer, this);
+			}
+			
+		}
+		
+		redrawImpl(0,
+				   0,
+				   getPixelWidth(), 
+				   getPixelHeight());
+	}
+	
 	public void redraw(final int x, final int y, final int width, final int height) {
 		final int maxY = y + height - clientScrollOrigin;
 		final int amountOver = Math.max(0, maxY - termSize.height);
 		final int drawnHeight = height - amountOver;
 		
-		if(amountOver > 0)
-			//gfx.setColor(Color.YELLOW);
-			//gfx.fillRect(x * charSize.width, y * charSize.height, width * charSize.width, (height - drawnHeight) * charSize.height );
-			//gfx.setClip(x * charSize.width, (y + clientScrollOrigin) * charSize.height, width * charSize.width, amountOver * charSize.height);
-			scrollBuffer.pumpRuns(y + clientScrollOrigin, Math.min(amountOver, termSize.height), this);
-		
-		backBuffer.redraw(x, y, width, height);
-		
-		if(drawnHeight > 0)
-			backBuffer.pumpRuns(x, y, width, height - amountOver, this);
-		redrawImpl(x * charSize.width, 
-				   y * charSize.height, 
-				   width * charSize.width, 
-				   height * charSize.height);
+		if(drawnHeight > 0){
+			backBuffer.pumpRuns(x, y, width, drawnHeight, this);
+			redrawImpl(x, y, width, height);
+		}
+	}
+	
+	public void redrawFromDamage(){
+		backBuffer.pumpRunsFromDamage(new StyledRunConsumer(){
+			public void consumeRun(int x, int y, Style style, char[] buf, int start, int len) {
+				logger.info("Damaged run:("+ x +","+ y + ")" +  new String(buf, start, len) + "Style" + style.getNumber() );
+			}
+		});
+		backBuffer.resetDamage();
 	}
 
 	private void redrawImpl(final int x, final int y, final int width, final int height) {
 		final Graphics g = getGraphics();
-		g.setClip(x, y, width, height);
+		g.setClip(x * charSize.width , y * charSize.height,  width * charSize.width, height * charSize.height);
 		g.drawImage(img, 0, 0, termComponent);
 	}
 	
