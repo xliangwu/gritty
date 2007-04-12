@@ -73,6 +73,14 @@ public class Main {
 		}
 	};
 	
+	private AbstractAction drawDamage = new AbstractAction("Draw from damage") {
+		public void actionPerformed(final ActionEvent e) {
+			if(termPanel != null)
+				termPanel.redrawFromDamage();
+		}
+	};
+	
+	
 	
 	private final JMenuBar getJMenuBar() {
 		final JMenuBar mb = new JMenuBar();
@@ -84,6 +92,7 @@ public class Main {
 		
 		dm.add(showBuffersAction);
 		dm.add(resetDamage);
+		dm.add(drawDamage);
 		mb.add(dm);
 
 		return mb;
