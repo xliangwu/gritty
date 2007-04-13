@@ -606,18 +606,27 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 		}*/
 	}
 	
+	int noDamage = 0;
+	
 	public void redrawFromDamage(){
-		if(backBuffer.hasDamage()){
-			reallyDrawCursor();
-			backBuffer.pumpRunsFromDamage(this);
-			redrawImpl(0,
-					   0,
-					   getPixelWidth(), 
-					   getPixelHeight());
-			reallyDrawCursor();
-			backBuffer.resetDamage();
-		}else{
-			
+		backBuffer.lock();
+		try{
+			if(backBuffer.hasDamage()){
+				noDamage = 0;
+				backBuffer.pumpRunsFromDamage(this);
+				redrawImpl(0,
+						   0,
+						   getPixelWidth(), 
+						   getPixelHeight());
+				backBuffer.resetDamage();
+			}else{
+				if(noDamage > 5 && noDamage % 10 == 0 ){
+					reallyDrawCursor();
+				}
+				noDamage++;
+			}
+		}finally{
+			backBuffer.unlock();
 		}
 	}
 
