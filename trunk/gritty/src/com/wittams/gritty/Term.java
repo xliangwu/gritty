@@ -70,4 +70,7 @@ public interface Term {
 	
 	Dimension doResize(Dimension pendingResize, ResizeOrigin origin);
 
+	void lock();
+	void unlock();
+	
 }

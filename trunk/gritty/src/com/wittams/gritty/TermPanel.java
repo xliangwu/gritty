@@ -38,6 +38,8 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
@@ -51,6 +53,7 @@ import java.io.IOException;
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -59,6 +62,7 @@ import org.apache.log4j.Logger;
 public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwner, StyledRunConsumer {
 	private static final Logger logger = Logger.getLogger(TermPanel.class);
 	private static final long serialVersionUID = -1048763516632093014L;
+	private static final double FPS = 20;
 
 	private BufferedImage img;
 
@@ -196,6 +200,13 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 			    }
 			}
 		});
+		
+		Timer redrawTimer = new Timer( (int) (1000/FPS) , new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				redrawFromDamage();	
+			}
+		});
+		redrawTimer.start();
 	}
 	
 	
@@ -436,7 +447,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	}
 
 	public void drawCursor() {
-		final int maxY = cursor.y  - clientScrollOrigin;
+		/*final int maxY = cursor.y  - clientScrollOrigin;
 		final int amountOver = maxY - termSize.height;
 		if(amountOver < 1){
 		
@@ -447,6 +458,25 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 					charSize.width, charSize.height);
 			g.drawImage(img, 0, 0, termComponent);
 			backBuffer.drawCursor();
+		}*/
+	}
+	
+	public void reallyDrawCursor() {
+		final int maxY = cursor.y  - clientScrollOrigin;
+		final int amountOver = maxY - termSize.height;
+		if(amountOver < 1){
+		
+			
+			final Graphics g = getGraphics();
+			if(g!= null){
+				g.setColor(currentForeground);
+				g.setXORMode(currentBackground);
+			/*	g.setClip(cursor.x * charSize.width, (cursor.y - 1 - clientScrollOrigin) * charSize.height,
+					      charSize.width, charSize.height); */
+			/*	g.drawImage(img, 0, 0, termComponent); */
+				g.fillRect(cursor.x * charSize.width, (cursor.y - 1 - clientScrollOrigin)
+						* charSize.height, charSize.width, charSize.height);
+			}
 		}
 	}
 
@@ -565,6 +595,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	}
 	
 	public void redraw(final int x, final int y, final int width, final int height) {
+		/*
 		final int maxY = y + height - clientScrollOrigin;
 		final int amountOver = Math.max(0, maxY - termSize.height);
 		final int drawnHeight = height - amountOver;
@@ -572,22 +603,30 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 		if(drawnHeight > 0){
 			backBuffer.pumpRuns(x, y, width, drawnHeight, this);
 			redrawImpl(x, y, width, height);
-		}
+		}*/
 	}
 	
 	public void redrawFromDamage(){
-		backBuffer.pumpRunsFromDamage(new StyledRunConsumer(){
-			public void consumeRun(int x, int y, Style style, char[] buf, int start, int len) {
-				logger.info("Damaged run:("+ x +","+ y + ")" +  new String(buf, start, len) + "Style" + style.getNumber() );
-			}
-		});
-		backBuffer.resetDamage();
+		if(backBuffer.hasDamage()){
+			reallyDrawCursor();
+			backBuffer.pumpRunsFromDamage(this);
+			redrawImpl(0,
+					   0,
+					   getPixelWidth(), 
+					   getPixelHeight());
+			reallyDrawCursor();
+			backBuffer.resetDamage();
+		}else{
+			
+		}
 	}
 
 	private void redrawImpl(final int x, final int y, final int width, final int height) {
 		final Graphics g = getGraphics();
-		g.setClip(x * charSize.width , y * charSize.height,  width * charSize.width, height * charSize.height);
-		g.drawImage(img, 0, 0, termComponent);
+		if(g!= null){
+			g.setClip(x * charSize.width , y * charSize.height,  width * charSize.width, height * charSize.height);
+			g.drawImage(img, 0, 0, termComponent);
+		}
 	}
 	
 	public void scrollArea(final int y, final int h, int dy) {
@@ -692,6 +731,16 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 
 	public ScrollBuffer getScrollBuffer() {
 		return scrollBuffer;
+	}
+
+	public void lock() {
+		backBuffer.lock();
+	}
+
+
+
+	public void unlock() {
+		backBuffer.unlock();
 	}
 	
 }
