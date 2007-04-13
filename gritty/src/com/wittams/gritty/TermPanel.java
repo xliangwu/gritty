@@ -282,10 +282,10 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		gfx = img.createGraphics();
 		gfx.setFont(currentFont);
 		
-		if (oldImage != null)
+		if (oldImage != null){
 			gfx.drawImage(oldImage, 0, img.getHeight() - oldImage.getHeight(),
 					oldImage.getWidth(), oldImage.getHeight(), termComponent);
-
+		}
 		cursorGfx = (Graphics2D) img.getGraphics();
 		cursorGfx.setColor(currentForeground);
 		cursorGfx.setXORMode(currentBackground);
@@ -353,7 +353,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		super.paintComponent(g);
 		if (img != null){
 			g.drawImage(img, 0, 0, termComponent);
-			reallyDrawCursor();
+			reallyDrawCursor(g);
 		}
 	}
 
@@ -447,23 +447,13 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		
 	}
 	
-	public void reallyDrawCursor() {
-
-		final int maxY = cursor.y  - clientScrollOrigin;
-		final int amountOver = maxY - termSize.height;
-		if(amountOver < 1){
-		
-			
-			final Graphics g = getGraphics();
-			if(g!= null){
-				g.setColor(currentForeground);
-				g.setXORMode(currentBackground);
-			/*	g.setClip(cursor.x * charSize.width, (cursor.y - 1 - clientScrollOrigin) * charSize.height,
-					      charSize.width, charSize.height); */
-			/*	g.drawImage(img, 0, 0, termComponent); */
-				g.fillRect(cursor.x * charSize.width, (cursor.y - 1 - clientScrollOrigin)
-						* charSize.height, charSize.width, charSize.height);
-			}
+	public void reallyDrawCursor(Graphics g) {
+		final int y = (cursor.y - 1 - clientScrollOrigin);
+		if(y > 0 && y < termSize.height ){
+			g.setColor(currentForeground);
+			g.setXORMode(currentBackground);
+			g.fillRect(cursor.x * charSize.width, y * charSize.height, 
+					   charSize.width, charSize.height);
 		}
 	}
 
@@ -597,9 +587,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		final int newOrigin = newClientScrollOrigin;
 		if(!backBuffer.tryLock()){
 			if(framesSkipped >= 5){
-				
 				backBuffer.lock();
-				
 			}else{
 				framesSkipped++;
 				return;
@@ -607,14 +595,11 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		}
 		//backBuffer.lock();
 		try{
-			if(framesSkipped > 0){
-				logger.info("Skipped " + framesSkipped );
-			}
 			framesSkipped =0;
 			boolean hasDamage = backBuffer.hasDamage();
 			boolean needCursorDrawn = noDamage > 5;
-			
-			if( clientScrollOrigin != newOrigin){
+			boolean needScroll = clientScrollOrigin != newOrigin;
+			if( needScroll ){
 		    	drawSelection();
 		    	final int oldOrigin = clientScrollOrigin;
 		    	clientScrollOrigin = newOrigin;
@@ -630,7 +615,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			}
 			
 			if(!hasDamage) noDamage++;
-			if(clientScrollOrigin != newOrigin || hasDamage){
+			if(needScroll || hasDamage){
 				repaint();
 			}
 		}finally{
