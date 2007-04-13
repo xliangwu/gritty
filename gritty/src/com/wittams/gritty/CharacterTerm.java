@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
 
@@ -19,6 +21,8 @@ public class CharacterTerm implements Term {
 
 	private int width;
 	private int height;
+	
+	private final Lock lock = new ReentrantLock();
 	
 	CharacterTerm(final int width, final int height) {
 		allocateBuffers(width, height);
@@ -77,17 +81,18 @@ public class CharacterTerm implements Term {
 	}
 
 	public void clearArea(final int leftX, final int topY, final int rightX, final int bottomY) {
-		if(topY > bottomY )
+		if(topY > bottomY ){
 			logger.error("Attempt to clear upside down area: top:" + topY + " > bottom:" + bottomY);
-		
-		for (int y = topY; y < bottomY; y++)
-			if (y > height - 1 || y < 0)
+			return;
+		}
+		for (int y = topY; y < bottomY; y++){
+			if (y > height - 1 || y < 0){
 				logger.error("attempt to clear line" + y + "\n" +
 						   		"args were x1:" + leftX + " y1:" + topY + " x2:"
 						   		+ rightX + "y2:" + bottomY);
-			else if (leftX > rightX)
+			}else if (leftX > rightX){
 				logger.error("Attempt to clear backwards area: left:" + leftX + " > right:" + rightX);
-			else {
+			}else {
 				Arrays.fill(buf, 
 						   y * width + leftX, 
 						   y * width + rightX,
@@ -101,6 +106,7 @@ public class CharacterTerm implements Term {
 						    y * width + rightX, 
 						    true);
 			}
+		}
 	}
 
 	public void drawBytes(final byte[] bytes, final int s, final int len, final int x, final int y) {
@@ -202,75 +208,100 @@ public class CharacterTerm implements Term {
 	}
 
 	public String getStyleLines(){
-		final StringBuilder sb = new StringBuilder();
-		for (int row = 0; row < height; row++) {
-			for(int col = 0; col < width; col++){
-				final Style style = styleBuf[row * width + col];
-				int styleNum = style == null?  styleNum = 0 : style.getNumber();
-				sb.append(String.format("%03d ",styleNum ));
+		lock.lock();
+		try{
+			final StringBuilder sb = new StringBuilder();
+			for (int row = 0; row < height; row++) {
+				for(int col = 0; col < width; col++){
+					final Style style = styleBuf[row * width + col];
+					int styleNum = style == null?  styleNum = 0 : style.getNumber();
+					sb.append(String.format("%03d ",styleNum ));
+				}
+				sb.append("\n");
 			}
-			sb.append("\n");
+			return sb.toString();
+		}finally{
+			lock.unlock();
 		}
-		return sb.toString();
 	}
 
 	public String getLines() {
-		final StringBuffer sb = new StringBuffer();
-		for (int row = 0; row < height; row++) {
-			sb.append(buf, row * width, width);
-			sb.append('\n');
+		lock.lock();
+		try{
+			final StringBuffer sb = new StringBuffer();
+			for (int row = 0; row < height; row++) {
+				sb.append(buf, row * width, width);
+				sb.append('\n');
+			}
+			return sb.toString();
+		}finally{
+			lock.unlock();
 		}
-		return sb.toString();
 	}
 	
 	public String getDamageLines(){
-		final StringBuffer sb = new StringBuffer();
-		for (int row = 0; row < height; row++){
-			for(int col = 0; col < width; col++){
-				boolean isDamaged = damage.get( row * width + col);
-				sb.append( isDamaged ? 'X' : '-');
+		lock.lock();
+		try{
+			final StringBuffer sb = new StringBuffer();
+			for (int row = 0; row < height; row++){
+				for(int col = 0; col < width; col++){
+					boolean isDamaged = damage.get( row * width + col);
+					sb.append( isDamaged ? 'X' : '-');
+				}
+				sb.append("\n");
 			}
-			sb.append("\n");
+			return sb.toString();
+		}finally{
+			lock.unlock();
 		}
-		return sb.toString();
 	}
 	
 	public void resetDamage(){
-		damage.clear();
+		lock.lock();
+		try{
+			damage.clear();
+		}finally{
+			lock.unlock();
+		}
 	}
 
 	public void pumpRuns(final int x, final int y, final int w, final int h, final StyledRunConsumer consumer){
+		
 		final int startRow = y;
 		final int endRow = y + h;
 		final int startCol = x;
 		final int endCol = x + w;
 		
-		for(int row = startRow ; row < endRow ; row++ ){
-			
-			Style lastStyle = null;
-			int beginRun = startCol;
-			for(int col = startCol; col < endCol; col++ ){
-				final int location = row * width + col;
-				if(location < 0 || location > styleBuf.length ){
-					logger.error("Requested out of bounds runs:" + "x:" +x +" y:" +y +" w:" +w + " h:" +h);
-					continue;
+		lock.lock();
+		try{
+			for(int row = startRow ; row < endRow ; row++ ){	
+				Style lastStyle = null;
+				int beginRun = startCol;
+				for(int col = startCol; col < endCol; col++ ){
+					final int location = row * width + col;
+					if(location < 0 || location > styleBuf.length ){
+						logger.error("Requested out of bounds runs:" + "x:" +x +" y:" +y +" w:" +w + " h:" +h);
+						continue;
+					}
+					final Style cellStyle = styleBuf[ location ];
+					if(lastStyle == null){
+						//begin line
+						lastStyle = cellStyle;
+					}else if(!cellStyle.equals(lastStyle)){ 
+						//start of new run
+						consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
+						beginRun = col;
+						lastStyle = cellStyle;
+					}
 				}
-				final Style cellStyle = styleBuf[ location ];
-				if(lastStyle == null){
-					//begin line
-					lastStyle = cellStyle;
-				}else if(!cellStyle.equals(lastStyle)){ 
-					//start of new run
-					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
-					beginRun = col;
-					lastStyle = cellStyle;
-				}
+				//end row
+				if(lastStyle == null)
+					logger.error("Style is null for run supposed to be from "+ beginRun + " to " + endCol + "on row " + row);
+				else
+					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
 			}
-			//end row
-			if(lastStyle == null)
-				logger.error("Style is null for run supposed to be from "+ beginRun + " to " + endCol + "on row " + row);
-			else
-				consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
+		}finally{
+			lock.unlock();
 		}
 	}
 	
@@ -279,37 +310,41 @@ public class CharacterTerm implements Term {
 		final int endRow = height;
 		final int startCol = 0;
 		final int endCol = width;
-		
-		for(int row = startRow ; row < endRow ; row++ ){
-			
-			Style lastStyle = null;
-			int beginRun = startCol;
-			for(int col = startCol; col < endCol; col++ ){
-				final int location = row * width + col;
-				if(location < 0 || location > styleBuf.length ){
-					logger.error("Requested out of bounds runs: pumpFromDamage");
-					continue;
-				}
-				final Style cellStyle = styleBuf[ location ];
-				final boolean isDamaged = damage.get(location);
-				if(!isDamaged){
-					if(lastStyle != null) 
+		lock.lock();
+		try{
+			for(int row = startRow ; row < endRow ; row++ ){
+				
+				Style lastStyle = null;
+				int beginRun = startCol;
+				for(int col = startCol; col < endCol; col++ ){
+					final int location = row * width + col;
+					if(location < 0 || location > styleBuf.length ){
+						logger.error("Requested out of bounds runs: pumpFromDamage");
+						continue;
+					}
+					final Style cellStyle = styleBuf[ location ];
+					final boolean isDamaged = damage.get(location);
+					if(!isDamaged){
+						if(lastStyle != null) 
+							consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
+						beginRun = col;
+						lastStyle = null;
+					}else if(lastStyle == null){
+						//begin damaged run
+						lastStyle = cellStyle;
+					}else if(!cellStyle.equals(lastStyle)){ 
+						//start of new run
 						consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
-					beginRun = col;
-					lastStyle = null;
-				}else if(lastStyle == null){
-					//begin damaged run
-					lastStyle = cellStyle;
-				}else if(!cellStyle.equals(lastStyle)){ 
-					//start of new run
-					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, col - beginRun);
-					beginRun = col;
-					lastStyle = cellStyle;
+						beginRun = col;
+						lastStyle = cellStyle;
+					}
 				}
+				//end row
+				if(lastStyle != null)
+					consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
 			}
-			//end row
-			if(lastStyle != null)
-				consumer.consumeRun(beginRun, row, lastStyle, buf, row * width + beginRun, endCol - beginRun);
+		}finally{
+			lock.unlock();
 		}
 	}
 	
@@ -349,6 +384,17 @@ public class CharacterTerm implements Term {
 		return height;
 	}
 
-	
-	
+	public boolean hasDamage() {
+		return damage.nextSetBit(0) != -1;
+	}
+
+	public void lock() {
+		lock.lock();
+		
+	}
+
+	public void unlock() {
+		lock.unlock();
+	}
+
 }
