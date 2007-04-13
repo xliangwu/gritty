@@ -52,14 +52,14 @@ import java.io.IOException;
 
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
-import javax.swing.JPanel;
+import javax.swing.JComponent;
 import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.apache.log4j.Logger;
 
-public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwner, StyledRunConsumer {
+public class TermPanel extends JComponent implements KeyListener, Term, ClipboardOwner, StyledRunConsumer {
 	private static final Logger logger = Logger.getLogger(TermPanel.class);
 	private static final long serialVersionUID = -1048763516632093014L;
 	private static final double FPS = 20;
@@ -119,6 +119,8 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	private final BoundedRangeModel brm = new DefaultBoundedRangeModel(0,80,0,80);
 
 	protected int clientScrollOrigin;
+	protected volatile int newClientScrollOrigin;
+	protected volatile boolean shouldDrawCursor;
 	
 	public TermPanel() {
 		scrollBuffer = new ScrollBuffer();
@@ -170,6 +172,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 
 			@Override
 			public void mouseClicked(final MouseEvent e) {
+				requestFocusInWindow();
 				clearSelection();
 				selectionStart = null;
 				selectionEnd = null;
@@ -188,16 +191,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 
 		brm.addChangeListener(new ChangeListener() {
 			public void stateChanged(final ChangeEvent e) {
-			    final int newOrigin = brm.getValue();
-			    if( clientScrollOrigin != newOrigin){
-			    	drawCursor();
-			    	drawSelection();
-			    	final int oldOrigin = clientScrollOrigin;
-			    	clientScrollOrigin = newOrigin;
-			    	clientScrollOriginChanged(oldOrigin);
-			    	drawSelection();
-			    	drawCursor();
-			    }
+				newClientScrollOrigin = brm.getValue();
 			}
 		});
 		
@@ -206,6 +200,7 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 				redrawFromDamage();	
 			}
 		});
+		setDoubleBuffered(true);
 		redrawTimer.start();
 	}
 	
@@ -356,8 +351,10 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	@Override
 	public void paintComponent(final Graphics g) {
 		super.paintComponent(g);
-		if (img != null)
+		if (img != null){
 			g.drawImage(img, 0, 0, termComponent);
+			reallyDrawCursor();
+		}
 	}
 
 	@Override
@@ -447,21 +444,11 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	}
 
 	public void drawCursor() {
-		/*final int maxY = cursor.y  - clientScrollOrigin;
-		final int amountOver = maxY - termSize.height;
-		if(amountOver < 1){
 		
-			cursorGfx.fillRect(cursor.x * charSize.width, (cursor.y - 1 - clientScrollOrigin)
-					* charSize.height, charSize.width, charSize.height);
-			final Graphics g = getGraphics();
-			g.setClip(cursor.x * charSize.width, (cursor.y - 1 - clientScrollOrigin) * charSize.height,
-					charSize.width, charSize.height);
-			g.drawImage(img, 0, 0, termComponent);
-			backBuffer.drawCursor();
-		}*/
 	}
 	
 	public void reallyDrawCursor() {
+
 		final int maxY = cursor.y  - clientScrollOrigin;
 		final int amountOver = maxY - termSize.height;
 		if(amountOver < 1){
@@ -588,10 +575,6 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 			
 		}
 		
-		redrawImpl(0,
-				   0,
-				   getPixelWidth(), 
-				   getPixelHeight());
 	}
 	
 	public void redraw(final int x, final int y, final int width, final int height) {
@@ -607,37 +590,54 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 	}
 	
 	int noDamage = 0;
+	int framesSkipped = 0;
 	
 	public void redrawFromDamage(){
-		backBuffer.lock();
-		try{
-			if(backBuffer.hasDamage()){
-				noDamage = 0;
-				backBuffer.pumpRunsFromDamage(this);
-				redrawImpl(0,
-						   0,
-						   getPixelWidth(), 
-						   getPixelHeight());
-				backBuffer.resetDamage();
+		
+		final int newOrigin = newClientScrollOrigin;
+		if(!backBuffer.tryLock()){
+			if(framesSkipped >= 5){
+				
+				backBuffer.lock();
+				
 			}else{
-				if(noDamage > 5 && noDamage % 10 == 0 ){
-					reallyDrawCursor();
-				}
-				noDamage++;
+				framesSkipped++;
+				return;
+			}
+		}
+		//backBuffer.lock();
+		try{
+			if(framesSkipped > 0){
+				logger.info("Skipped " + framesSkipped );
+			}
+			framesSkipped =0;
+			boolean hasDamage = backBuffer.hasDamage();
+			boolean needCursorDrawn = noDamage > 5;
+			
+			if( clientScrollOrigin != newOrigin){
+		    	drawSelection();
+		    	final int oldOrigin = clientScrollOrigin;
+		    	clientScrollOrigin = newOrigin;
+		    	clientScrollOriginChanged(oldOrigin);
+		    	drawSelection();
+		    }
+				
+			if(hasDamage){
+				noDamage = 0;
+				
+				backBuffer.pumpRunsFromDamage(this);
+				backBuffer.resetDamage();
+			}
+			
+			if(!hasDamage) noDamage++;
+			if(clientScrollOrigin != newOrigin || hasDamage){
+				repaint();
 			}
 		}finally{
 			backBuffer.unlock();
 		}
 	}
 
-	private void redrawImpl(final int x, final int y, final int width, final int height) {
-		final Graphics g = getGraphics();
-		if(g!= null){
-			g.setClip(x * charSize.width , y * charSize.height,  width * charSize.width, height * charSize.height);
-			g.drawImage(img, 0, 0, termComponent);
-		}
-	}
-	
 	public void scrollArea(final int y, final int h, int dy) {
 		if( dy < 0 ){ 
 			//Moving lines off the top of the screen
@@ -650,13 +650,10 @@ public class TermPanel extends JPanel implements KeyListener, Term, ClipboardOwn
 		drawSelection();
 		selectionStart = null;
 		selectionEnd = null;
-		scrollAreaImpl(y * charSize.height, 
-				       h * charSize.height, 
-				       dy * charSize.height);
 		backBuffer.scrollArea(y, h, dy);
 	}
 
-	public void scrollAreaImpl(final int y, final int h, final int dy) {
+	private void scrollAreaImpl(final int y, final int h, final int dy) {
 		getGraphics().copyArea(0, y, getPixelWidth(), h, 0, dy);
 		gfx.copyArea(0, y, getPixelWidth(), h, 0, dy);
 	}

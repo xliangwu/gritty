@@ -251,7 +251,7 @@ public class Main {
 			
 			termPanel.setEmulator(emulator);
 			emulator.start();
-			termPanel.requestFocus();
+			//termPanel.requestFocus();
 			
 			
 			if (session != null) {

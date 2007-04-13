@@ -397,4 +397,8 @@ public class CharacterTerm implements Term {
 		lock.unlock();
 	}
 
+	public boolean tryLock() {
+		return lock.tryLock();
+	}
+
 }

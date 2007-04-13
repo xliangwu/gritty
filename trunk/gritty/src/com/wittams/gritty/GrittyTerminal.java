@@ -13,7 +13,7 @@ public class GrittyTerminal extends JPanel{
 	private final TermPanel termPanel ;
 	private final JScrollBar scrollBar;
 	
-	GrittyTerminal(){
+	public GrittyTerminal(){
 		super(new BorderLayout());
 		termPanel = new TermPanel();
 		add(termPanel, BorderLayout.CENTER );
