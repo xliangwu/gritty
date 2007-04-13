@@ -82,6 +82,7 @@ class TerminalWriter implements ITerminalWriter {
 			term.redraw(drawStartX, drawnStartY - 1, drawnWidth, drawnHeight);
 		term.setCursor(cursorX, cursorY);
 		term.drawCursor();
+		scrollY();
 	}
 
 	public void writeASCII(final byte[] chosenBuffer, final int start,
@@ -146,6 +147,7 @@ class TerminalWriter implements ITerminalWriter {
 			cursorY += 1;
 			term.setCursor(cursorX, cursorY);
 			term.drawCursor();
+			scrollY(); 
 		} finally {
 			term.unlock();
 		}

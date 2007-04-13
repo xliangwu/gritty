@@ -5,6 +5,7 @@ package com.wittams.gritty;
 
 import java.awt.Dimension;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.EnumSet;
 
 import org.apache.log4j.Logger;
@@ -27,9 +28,11 @@ class StateMachine {
 	void go() {
 		try {
 			while (true)
-				singleIteration();
+				singleIteration();	
+		} catch (final InterruptedIOException e){
+			logger.info("Terminal exiting");
 		} catch (final Exception e) {
-			e.printStackTrace();
+			logger.error("Caught exception in terminal thread", e);
 		}
 	}
 	
@@ -73,7 +76,7 @@ class StateMachine {
 			// '\n'
 			synchronized (tw) {
 				tw.newLine();
-				tw.scrollY(); 
+				
 			}
 			break;
 		default:
@@ -95,7 +98,6 @@ class StateMachine {
 					final int availableChars = channel.advanceThroughASCII(tw.distanceToLineEnd());
 					tw.writeASCII(channel.buf, channel.offset - availableChars, availableChars);
 				}
-				tw.scrollY();
 			}
 			break;
 		}
@@ -103,9 +105,9 @@ class StateMachine {
 
 	private void handleESC(byte initByte) throws IOException {
 		byte b = initByte;
-		if (b == '[')
+		if (b == '['){
 			doControlSequence();
-		else {
+		} else {
 			final byte[] intermediate = new byte[10];
 			int intCount = 0;
 			while (b >= 0x20 && b <= 0x2F) {

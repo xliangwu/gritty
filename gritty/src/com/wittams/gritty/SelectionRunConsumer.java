@@ -5,7 +5,10 @@ package com.wittams.gritty;
 
 import java.awt.Point;
 
+import org.apache.log4j.Logger;
+
 final class SelectionRunConsumer implements StyledRunConsumer {
+	private static final Logger logger = Logger.getLogger(SelectionRunConsumer.class);
 	private final StringBuffer selection;
 	private final Point begin;
 	private final Point end;
@@ -22,17 +25,27 @@ final class SelectionRunConsumer implements StyledRunConsumer {
 		int startPos = start;
 		int extent = len;
 		
-		if(y == end.y)
+		if(y == end.y){
 			extent = Math.min(end.x  - x, extent);
+		}
 		if(y == begin.y ){
 			final int xAdj = Math.max(0, begin.x - x);
 			startPos += xAdj;
 			extent -= xAdj;
+			if( extent < 0) return; // The run is off the left edge of the selection on the first line.
 		}
 		if(len > 0){
 			if(!first && x == 0) selection.append('\n');
 			first = false;
-			selection.append(buf,startPos, extent);
+			if( extent < 0){
+				logger.error("Attempt to copy to selection with negative length" );
+			}else if( startPos < 0 ){
+				logger.error("Attempt to copy to selection from before start of buffer");
+			}else if (startPos + extent >= buf.length){
+				logger.error("Attempt to copy to selection from after end of buffer");
+			}else{
+				selection.append(buf,startPos, extent);
+			}
 		}
 	}
 }

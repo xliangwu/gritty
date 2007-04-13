@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-class TermIOBuffer {
+public class TermIOBuffer {
 	private InputStream in = null;
 	private OutputStream out = null;
 	private ResizeTtyDelegate resizeTtyDelegate = null;
@@ -21,14 +21,14 @@ class TermIOBuffer {
 
 	int serial;
 
-	TermIOBuffer(final InputStream in, final OutputStream out, final ResizeTtyDelegate resizeTtyDelegate) {
+	public TermIOBuffer(final InputStream in, final OutputStream out, final ResizeTtyDelegate resizeTtyDelegate) {
 		this.in = in;
 		this.out = out;
 		this.resizeTtyDelegate = resizeTtyDelegate;
 		serial = 0;
 	}
 
-	byte getChar() throws java.io.IOException {
+	public byte getChar() throws java.io.IOException {
 		if (length == 0)
 			fillBuf();
 		length--;
@@ -51,7 +51,7 @@ class TermIOBuffer {
 		}
 	}
 
-	void pushChar(final byte b) throws java.io.IOException {
+	public void pushChar(final byte b) throws java.io.IOException {
 		if(offset == 0){
 			// Pushed back too many... shift it up to the end.
 			offset = buf.length - length;
@@ -83,7 +83,7 @@ class TermIOBuffer {
 		return origLen - len;
 	}
 
-	void sendBytes(final byte[] bytes) throws IOException {
+	public void sendBytes(final byte[] bytes) throws IOException {
 		out.write(bytes);
 		out.flush();
 	}

@@ -45,15 +45,15 @@ public class ScrollBuffer implements StyledRunConsumer {
 
 		private void ensureArrays(final int currentRun) {
 			if(currentRun >= runStarts.length){
-				runStarts = Arrays.copyOf(runStarts, runStarts.length * 2);
-				runStyles = Arrays.copyOf(runStyles, runStyles.length * 2);
+				runStarts = Util.copyOf(runStarts, runStarts.length * 2);
+				runStyles = Util.copyOf(runStyles, runStyles.length * 2);
 			}
 		}
 
 		public void complete(final int currentRun, final int bufPos) {
-			runStarts = Arrays.copyOf(runStarts, currentRun);
-			runStyles = Arrays.copyOf(runStyles, currentRun);
-			buf = Arrays.copyOf(buf, bufPos);
+			runStarts = Util.copyOf(runStarts, currentRun);
+			runStyles = Util.copyOf(runStyles, currentRun);
+			buf = Util.copyOf(buf, bufPos);
 			lineStarts = lineStarts.get(0, currentRun);
 		}
 		
