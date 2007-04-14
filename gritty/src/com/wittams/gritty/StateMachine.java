@@ -15,11 +15,11 @@ import static com.wittams.gritty.CharacterUtils.*;
 
 class StateMachine {
 	private final static Logger logger = Logger.getLogger(StateMachine.class);
-	private final ITerminalWriter tw;
+	private final TerminalWriter tw;
 	private final EnumSet<Mode> modes = EnumSet.of(Mode.ANSI);
-	private final TermIOBuffer channel;
+	private final TtyChannel channel;
 	
-	StateMachine(final TermIOBuffer channel, final ITerminalWriter tw) {
+	StateMachine(final TtyChannel channel, final TerminalWriter tw) {
 		this.tw = tw;
 		this.channel = channel;
 	}

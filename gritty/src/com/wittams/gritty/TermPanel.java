@@ -319,8 +319,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			termSize = (Dimension) newSize.clone();
 			// resize images..
 			setUpImages();
-			redraw(0, 0, getColumnCount(), getRowCount());
-	
+			
 			final Dimension pixelDimension = new Dimension(getPixelWidth(), getPixelHeight());
 			
 			setSize( pixelDimension );
@@ -566,18 +565,6 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			
 		}
 		
-	}
-	
-	public void redraw(final int x, final int y, final int width, final int height) {
-		/*
-		final int maxY = y + height - clientScrollOrigin;
-		final int amountOver = Math.max(0, maxY - termSize.height);
-		final int drawnHeight = height - amountOver;
-		
-		if(drawnHeight > 0){
-			backBuffer.pumpRuns(x, y, width, drawnHeight, this);
-			redrawImpl(x, y, width, height);
-		}*/
 	}
 	
 	int noDamage = 0;

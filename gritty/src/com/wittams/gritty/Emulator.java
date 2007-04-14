@@ -26,34 +26,38 @@ import java.awt.Dimension;
 import java.io.IOException;
 
 
-public abstract class Emulator {
-	final protected ITerminalWriter tw;
+public class Emulator {
+	final protected TerminalWriter tw;
 
-	final protected TermIOBuffer channel;
+	final protected TtyChannel channel;
 
-	public Emulator(final Term term, final TermIOBuffer channel) {
-		final ITerminalWriter wrapped = new TerminalWriter(term);
+	protected final StateMachine sm;
 
-		if (false)
-			tw = ITerminalWriter.Util.wrapWithLogging(wrapped);
-		else
-			tw = wrapped;
-		
+	public Emulator(final Term term, final TtyChannel channel) {
 		this.channel = channel;
+		tw = new TerminalWriter(term);
+		sm = new StateMachine(this.channel, tw);
 	}
-
-	public abstract void start();
-
-	public abstract byte[] getCode(int key);
-
-	public abstract void reset();
-	
-	public abstract void postResize(Dimension dimension, RequestOrigin origin);
 
 	public void sendBytes(final byte[] bytes) throws IOException {
 		channel.sendBytes(bytes);
 	}
 
-	
+	public void postResize(final Dimension dimension, final RequestOrigin origin){
+		sm.postResize(dimension, origin);
+	}
+
+	public void start(){
+		sm.go();
+	}
+
+	public byte[] getCode(final int key){
+		return CharacterUtils.getCode(key);
+	}
+
+	public void reset(){
+		if (tw != null)
+			tw.reset();
+	}
 
 }
