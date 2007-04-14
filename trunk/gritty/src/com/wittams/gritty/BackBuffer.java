@@ -9,8 +9,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
 
-public class CharacterTerm implements Term {
-	private static final Logger logger = Logger.getLogger(CharacterTerm.class);
+public class BackBuffer {
+	private static final Logger logger = Logger.getLogger(BackBuffer.class);
 	private static final char EMPTY_CHAR = ' '; // (char) 0x0;
 
 	private  char[] buf;
@@ -24,7 +24,7 @@ public class CharacterTerm implements Term {
 	
 	private final Lock lock = new ReentrantLock();
 	
-	CharacterTerm(final int width, final int height) {
+	BackBuffer(final int width, final int height) {
 		allocateBuffers(width, height);
 	}
 
@@ -49,7 +49,7 @@ public class CharacterTerm implements Term {
 		damage = new BitSet(width * height);
 	}
 
-	public Dimension doResize(final Dimension pendingResize, final ResizeOrigin origin ) {
+	public Dimension doResize(final Dimension pendingResize, final RequestOrigin origin ) {
 		final char [] oldBuf = buf;
 		final Style [] oldStyleBuf = styleBuf;
 		final int oldHeight = height;
@@ -346,42 +346,6 @@ public class CharacterTerm implements Term {
 		}finally{
 			lock.unlock();
 		}
-	}
-	
-	// Not stored
-	public void redraw(final int x, final int y, final int width, final int height) {
-		
-	}
-	
-	// Not stored
-	public void setCursor(final int x, final int y) {
-
-	}
-	
-	// Not stored
-	public void drawCursor() {
-	
-	}
-	
-	// Not stored
-	public void beep() {
-	
-	}
-
-	public int getCharHeight() {
-		return 1;
-	}
-
-	public int getCharWidth() {
-		return 1;
-	}
-
-	public int getColumnCount() {
-		return width;
-	}
-
-	public int getRowCount() {
-		return height;
 	}
 
 	public boolean hasDamage() {

@@ -14,7 +14,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.swing.AbstractAction;
-import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -23,21 +22,18 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
 
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
-import com.wittams.gritty.Term.ResizeOrigin;
 
 public class Main {
 	public static final Logger logger = Logger.getLogger(Main.class);
@@ -132,8 +128,8 @@ public class Main {
 		//term.setFrame(frame.getContentPane());
 		
 		termPanel.setResizePanelDelegate(new ResizePanelDelegate(){
-			public void resizedPanel(final Dimension pixelDimension, final ResizeOrigin origin) {
-				if(origin == ResizeOrigin.Remote)
+			public void resizedPanel(final Dimension pixelDimension, final RequestOrigin origin) {
+				if(origin == RequestOrigin.Remote)
 					sizeFrameForTerm(frame);
 			}
 		});

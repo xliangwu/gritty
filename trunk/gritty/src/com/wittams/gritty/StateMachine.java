@@ -10,7 +10,6 @@ import java.util.EnumSet;
 
 import org.apache.log4j.Logger;
 
-import com.wittams.gritty.Term.ResizeOrigin;
 
 import static com.wittams.gritty.CharacterUtils.*;
 
@@ -36,7 +35,7 @@ class StateMachine {
 		}
 	}
 	
-	public void postResize(final Dimension dimension, final ResizeOrigin origin) {
+	public void postResize(final Dimension dimension, final RequestOrigin origin) {
 		Dimension pixelSize;
 		synchronized (tw) {
 			pixelSize = tw.resize(dimension, origin);
@@ -288,7 +287,7 @@ class StateMachine {
 				synchronized (tw) {
 					switch(mode){
 					case WideColumn:
-						tw.resize(new Dimension(132, 24), ResizeOrigin.Remote );
+						tw.resize(new Dimension(132, 24), RequestOrigin.Remote );
 						tw.clearScreen();
 						tw.restoreCursor(null);
 						break;
@@ -300,7 +299,7 @@ class StateMachine {
 				synchronized (tw) {
 					switch(mode){
 					case WideColumn:
-						tw.resize(new Dimension(80, 24), ResizeOrigin.Remote);
+						tw.resize(new Dimension(80, 24), RequestOrigin.Remote);
 						tw.clearScreen();
 						tw.restoreCursor(null);
 						break;

@@ -25,7 +25,6 @@ package com.wittams.gritty;
 import java.awt.Dimension;
 import java.io.IOException;
 
-import com.wittams.gritty.Term.ResizeOrigin;
 
 public abstract class Emulator {
 	final protected ITerminalWriter tw;
@@ -49,7 +48,7 @@ public abstract class Emulator {
 
 	public abstract void reset();
 	
-	public abstract void postResize(Dimension dimension, ResizeOrigin origin);
+	public abstract void postResize(Dimension dimension, RequestOrigin origin);
 
 	public void sendBytes(final byte[] bytes) throws IOException {
 		channel.sendBytes(bytes);
