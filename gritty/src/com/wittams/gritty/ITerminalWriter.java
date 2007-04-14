@@ -10,7 +10,6 @@ import java.lang.reflect.Proxy;
 
 import org.apache.log4j.Logger;
 
-import com.wittams.gritty.Term.ResizeOrigin;
 
 interface ITerminalWriter {
 
@@ -69,7 +68,7 @@ interface ITerminalWriter {
 
 	void restoreCursor(StoredCursor storedCursor);
 	
-	Dimension resize(Dimension pendingResize, ResizeOrigin origin);
+	Dimension resize(Dimension pendingResize, RequestOrigin origin);
 
 	static class Util {
 		private Util(){}

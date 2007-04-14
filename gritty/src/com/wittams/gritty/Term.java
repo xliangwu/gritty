@@ -36,8 +36,6 @@ public interface Term {
 
 	void clear();
 
-	void drawCursor();
-
 	void setCursor(int x, int y);
 
 	void redraw(int x, int y, int width, int height);
@@ -63,12 +61,7 @@ public interface Term {
 
 	void resetColors();
 
-	static enum ResizeOrigin{
-		User,
-		Remote;
-	}
-	
-	Dimension doResize(Dimension pendingResize, ResizeOrigin origin);
+	Dimension doResize(Dimension pendingResize, RequestOrigin origin);
 
 	void lock();
 	void unlock();

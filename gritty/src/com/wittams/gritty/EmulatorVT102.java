@@ -24,7 +24,6 @@ package com.wittams.gritty;
 
 import java.awt.Dimension;
 
-import com.wittams.gritty.Term.ResizeOrigin;
 
 public class EmulatorVT102 extends Emulator {
 	private final StateMachine sm;
@@ -35,7 +34,7 @@ public class EmulatorVT102 extends Emulator {
 	}
 
 	@Override
-	public void postResize(final Dimension dimension, final ResizeOrigin origin) {
+	public void postResize(final Dimension dimension, final RequestOrigin origin) {
 		sm.postResize(dimension, origin);
 	}
 

@@ -49,6 +49,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
@@ -90,7 +91,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 
 	private int descent = 0;
 
-	private int lineSpace = -2;
+	private int lineSpace = 0;
 
 	Dimension charSize = new Dimension();
 
@@ -98,7 +99,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 
 	protected Point cursor = new Point();
 
-	private boolean antialiasing = false;
+	private boolean antialiasing = true;
 
 	private Emulator emulator = null;
 
@@ -108,7 +109,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 
 	protected boolean selectionInProgress;
 
-	private CharacterTerm backBuffer;
+	private BackBuffer backBuffer;
 
 	private Clipboard clipBoard;
 
@@ -126,7 +127,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		scrollBuffer = new ScrollBuffer();
 		brm.setRangeProperties(0, termSize.height, - scrollBuffer.getLineCount() , termSize.height, false );
 		
-		backBuffer = new CharacterTerm(termSize.width, termSize.height);
+		backBuffer = new BackBuffer(termSize.width, termSize.height);
 		currentFont = Font.decode("Monospaced-14");
 		normalFont = currentFont;
 		boldFont = currentFont.deriveFont(Font.BOLD);
@@ -303,7 +304,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 
 			final Dimension newSize = new Dimension(newWidth, newHeight);
 
-			emulator.postResize(newSize, ResizeOrigin.User);
+			emulator.postResize(newSize, RequestOrigin.User);
 		}
 	}
 
@@ -312,7 +313,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		this.sizeTerminalFromComponent();
 	}
 
-	public Dimension doResize(final Dimension newSize, final ResizeOrigin origin) {
+	public Dimension doResize(final Dimension newSize, final RequestOrigin origin) {
 		if(!newSize.equals(termSize)){
 			backBuffer.doResize(newSize, origin);
 			termSize = (Dimension) newSize.clone();
@@ -449,7 +450,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 	
 	public void reallyDrawCursor(Graphics g) {
 		final int y = (cursor.y - 1 - clientScrollOrigin);
-		if(y > 0 && y < termSize.height ){
+		if(y >= 0 && y < termSize.height ){
 			g.setColor(currentForeground);
 			g.setXORMode(currentBackground);
 			g.fillRect(cursor.x * charSize.width, y * charSize.height, 
@@ -581,6 +582,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 	
 	int noDamage = 0;
 	int framesSkipped = 0;
+	private boolean cursorChanged;
 	
 	public void redrawFromDamage(){
 		
@@ -597,7 +599,6 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		try{
 			framesSkipped =0;
 			boolean hasDamage = backBuffer.hasDamage();
-			boolean needCursorDrawn = noDamage > 5;
 			boolean needScroll = clientScrollOrigin != newOrigin;
 			if( needScroll ){
 		    	drawSelection();
@@ -615,8 +616,9 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			}
 			
 			if(!hasDamage) noDamage++;
-			if(needScroll || hasDamage){
+			if(needScroll || hasDamage || cursorChanged){
 				repaint();
+				cursorChanged = false;
 			}
 		}finally{
 			backBuffer.unlock();
@@ -637,7 +639,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		selectionEnd = null;
 		backBuffer.scrollArea(y, h, dy);
 	}
-
+	
 	private void scrollAreaImpl(final int y, final int h, final int dy) {
 		getGraphics().copyArea(0, y, getPixelWidth(), h, 0, dy);
 		gfx.copyArea(0, y, getPixelWidth(), h, 0, dy);
@@ -658,7 +660,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 	public void setCursor(final int x, final int y) {
 		cursor.x = x;
 		cursor.y = y;
-		backBuffer.setCursor(x, y);
+		cursorChanged = true;
 	}
 
 	public void beep() {
@@ -716,7 +718,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		return brm ;
 	}
 
-	public CharacterTerm getBackBuffer() {
+	public BackBuffer getBackBuffer() {
 		return backBuffer;
 	}
 
