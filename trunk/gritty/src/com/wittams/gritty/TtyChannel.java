@@ -8,10 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class TermIOBuffer {
-	private InputStream in = null;
-	private OutputStream out = null;
-	private ResizeTtyDelegate resizeTtyDelegate = null;
+public class TtyChannel {
+	private Tty tty;
 	
 	byte[] buf = new byte[1024];
 
@@ -21,10 +19,8 @@ public class TermIOBuffer {
 
 	int serial;
 
-	public TermIOBuffer(final InputStream in, final OutputStream out, final ResizeTtyDelegate resizeTtyDelegate) {
-		this.in = in;
-		this.out = out;
-		this.resizeTtyDelegate = resizeTtyDelegate;
+	public TtyChannel(final Tty tty) {
+		this.tty = tty;
 		serial = 0;
 	}
 
@@ -42,7 +38,7 @@ public class TermIOBuffer {
 
 	private void fillBuf() throws java.io.IOException {
 		length = offset = 0;
-		length = in.read(buf, offset, buf.length - offset);
+		length = tty.read(buf, offset, buf.length - offset);
 		serial++;
 
 		if (length <= 0) {
@@ -84,12 +80,11 @@ public class TermIOBuffer {
 	}
 
 	public void sendBytes(final byte[] bytes) throws IOException {
-		out.write(bytes);
-		out.flush();
+		tty.write(bytes);
 	}
 
 	public void postResize(final Dimension termSize, final Dimension pixelSize) {
-		resizeTtyDelegate.resize(termSize, pixelSize);
+		tty.resize(termSize, pixelSize);
 	}
 
 	public void pushBackBuffer(final byte[] bytes, final int len) throws IOException {

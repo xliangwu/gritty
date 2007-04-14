@@ -26,6 +26,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 
 public interface Term {
+	// Size information
 	int getRowCount();
 
 	int getColumnCount();
@@ -34,16 +35,17 @@ public interface Term {
 
 	int getCharHeight();
 
+	
 	void clear();
 
+	
 	void setCursor(int x, int y);
-
-	void redraw(int x, int y, int width, int height);
-
-	// void redraw();
-	void clearArea(int x1, int y1, int x2, int y2);
-
+	
+	
+	
 	void scrollArea(int y, int h, int dy);
+	
+	void clearArea(int x1, int y1, int x2, int y2);
 
 	void drawBytes(byte[] buf, int s, int len, int x, int y);
 

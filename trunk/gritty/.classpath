@@ -3,7 +3,7 @@
 	<classpathentry excluding="com/jcraft/jcterm/JCTermMIDP.java|com/jcraft/jcterm/JCTermApplet.java|com/jcraft/jcterm/JCTermAWT.java|com/jcraft/jcterm/JCTermJ2MECDC.java|com/jcraft/jcterm/Sftp.java|com/jcraft/jcterm/CharacterAdjustingTerm.java|com/jcraft/jcterm/MultiplexingTerm.java" kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/log4j-1.2.14.jar"/>
-	<classpathentry kind="lib" path="lib/jsch-0.1.32.jar"/>
 	<classpathentry kind="lib" path="lib/jzlib-1.07.jar"/>
+	<classpathentry kind="lib" path="lib/jsch-0.1.32.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

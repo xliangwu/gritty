@@ -35,14 +35,14 @@ public class ControlSequence {
 	
 	private ArrayList<Byte> unhandledChars;
 
-	ControlSequence(final TermIOBuffer channel) throws IOException {
+	ControlSequence(final TtyChannel channel) throws IOException {
 		argv = new int[10];
 		argc = 0;
 		modeTable = normalModes;
 		readControlSequence(channel);
 	}
 
-	private void readControlSequence(final TermIOBuffer channel) throws IOException {
+	private void readControlSequence(final TtyChannel channel) throws IOException {
 		argc = 0;
 		// Read integer arguments
 		int digit = 0;
@@ -89,7 +89,7 @@ public class ControlSequence {
 		unhandledChars.add(b);
 	}
 
-	public boolean pushBackReordered(final TermIOBuffer channel) throws IOException {
+	public boolean pushBackReordered(final TtyChannel channel) throws IOException {
 		if(unhandledChars == null) return false;
 		final byte[] bytes = new byte[1024]; // can't be more than the whole buffer... 
 		int i = 0;
@@ -142,7 +142,7 @@ public class ControlSequence {
 	}
 
 	public final void appendActualBytesRead(final StringBuffer sb,
-			final TermIOBuffer buffer) {
+			final TtyChannel buffer) {
 		if (lengthInBuf == -1)
 			sb.append("TermIOBuffer filled in reading");
 		else if (bufferVersion != buffer.serial)

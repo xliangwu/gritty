@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.wittams.gritty;
+package com.wittams.gritty.jsch;
 
 import java.awt.Container;
 import java.awt.GridBagConstraints;

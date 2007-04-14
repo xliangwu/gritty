@@ -12,20 +12,12 @@ import java.util.Arrays;
 import org.apache.log4j.Logger;
 
 
-class TerminalWriter implements ITerminalWriter {
+class TerminalWriter {
 	private static final Logger logger = Logger.getLogger(TerminalWriter.class);
 
 	private int scrollRegionTop;
 
 	private int scrollRegionBottom;
-
-	private int drawStartX = 0;
-
-	private int drawnStartY = 0;
-
-	private int drawnWidth = 0;
-
-	private int drawnHeight = 0;
 
 	private int cursorX = 0;
 
@@ -55,8 +47,7 @@ class TerminalWriter implements ITerminalWriter {
 	 * @see com.jcraft.jcterm.ITerminalWriter#startIteration()
 	 */
 	public void startIteration() {
-		drawnStartY = cursorY;
-		drawStartX = cursorX;
+		
 	}
 
 	private void startText() {
@@ -70,14 +61,11 @@ class TerminalWriter implements ITerminalWriter {
 
 			// scrollY();
 
-			drawStartX = cursorX;
-			drawnStartY = cursorY;
+			
 		}
 	}
 
 	private void finishText() {
-		if (drawnWidth > 0 && drawnHeight > 0)
-			term.redraw(drawStartX, drawnStartY - 1, drawnWidth, drawnHeight);
 		term.setCursor(cursorX, cursorY);
 		scrollY();
 	}
@@ -92,8 +80,6 @@ class TerminalWriter implements ITerminalWriter {
 				term.drawBytes(chosenBuffer, start, length, cursorX, cursorY);
 			}
 			cursorX += length;
-			drawnWidth = length;
-			drawnHeight = 1;
 			finishText();
 		} finally {
 			term.unlock();
@@ -110,8 +96,6 @@ class TerminalWriter implements ITerminalWriter {
 			term.drawString(new String(bytesOfChar, 0, 2, "EUC-JP"), cursorX,
 					cursorY);
 			cursorX += 2;
-			drawnWidth = 2;
-			drawnHeight = 1;
 			finishText();
 		} finally {
 			term.unlock();
@@ -127,7 +111,6 @@ class TerminalWriter implements ITerminalWriter {
 				term.scrollArea(scrollRegionTop, scrollRegionBottom
 						- scrollRegionTop, dy);
 				term.clearArea(0, cursorY - 1, termWidth, cursorY);
-				term.redraw(0, 0, termWidth, scrollRegionBottom);
 				term.setCursor(cursorX, cursorY);
 			}
 		} finally {
@@ -197,7 +180,6 @@ class TerminalWriter implements ITerminalWriter {
 				// Initial line
 				if (cursorX < termWidth) {
 					term.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
-					term.redraw(cursorX, cursorY - 1, termWidth - cursorX, 1);
 				}
 				// Rest
 				beginY = cursorY;
@@ -207,7 +189,6 @@ class TerminalWriter implements ITerminalWriter {
 			case 1:
 				// initial line
 				term.clearArea(0, cursorY - 1, cursorX + 1, cursorY);
-				term.redraw(0, cursorY - 1, cursorX + 1, 1);
 
 				beginY = 0;
 				endY = cursorY - 1;
@@ -225,7 +206,6 @@ class TerminalWriter implements ITerminalWriter {
 			// Rest of lines
 			if (beginY != endY)
 				clearLines(beginY, endY);
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -235,7 +215,6 @@ class TerminalWriter implements ITerminalWriter {
 		term.lock();
 		try {
 			term.clearArea(0, beginY, termWidth, endY);
-			term.redraw(0, beginY, termWidth, endY - beginY);
 		} finally {
 			term.unlock();
 		}
@@ -251,29 +230,23 @@ class TerminalWriter implements ITerminalWriter {
 		try {
 			final int arg = args.getArg(0, 0);
 
-			term.drawCursor();
-
 			switch (arg) {
 			case 0:
 				if (cursorX < termWidth) {
 					term.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
-					term.redraw(cursorX, cursorY - 1, termWidth - cursorX, 1);
 				}
 				break;
 			case 1:
 				final int extent = Math.min(cursorX + 1, termWidth);
 				term.clearArea(0, cursorY - 1, extent, cursorY);
-				term.redraw(0, cursorY - 1, extent, 1);
 				break;
 			case 2:
 				term.clearArea(0, cursorY - 1, termWidth, cursorY);
-				term.redraw(0, cursorY - 1, termWidth, 1);
 				break;
 			default:
 				logger.error("Unsupported erase in line mode:" + arg);
 				break;
 			}
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -282,15 +255,12 @@ class TerminalWriter implements ITerminalWriter {
 	public void cursorUp(final ControlSequence args) {
 		term.lock();
 		try {
-
 			int arg = args.getArg(0, 0);
 			arg = arg == 0 ? 1 : arg;
 
-			term.drawCursor();
 			cursorY -= arg;
 			cursorY = Math.max(cursorY, 1);
 			term.setCursor(cursorX, cursorY);
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -299,15 +269,11 @@ class TerminalWriter implements ITerminalWriter {
 	public void cursorDown(final ControlSequence args) {
 		term.lock();
 		try {
-
 			int arg = args.getArg(0, 0);
 			arg = arg == 0 ? 1 : arg;
-
-			term.drawCursor();
 			cursorY += arg;
 			cursorY = Math.min(cursorY, termHeight);
 			term.setCursor(cursorX, cursorY);
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -316,21 +282,15 @@ class TerminalWriter implements ITerminalWriter {
 	public void index() {
 		term.lock();
 		try {
-
-			term.drawCursor();
 			if (cursorY == termHeight) {
 				term.scrollArea(scrollRegionTop, scrollRegionBottom
 						- scrollRegionTop, -1);
 				term.clearArea(0, scrollRegionBottom - 1, termWidth,
 						scrollRegionBottom);
-				term.redraw(0, scrollRegionTop, termWidth, scrollRegionBottom
-						- scrollRegionTop);
 			} else {
 				cursorY += 1;
 				term.setCursor(cursorX, cursorY);
 			}
-
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -339,21 +299,15 @@ class TerminalWriter implements ITerminalWriter {
 	public void nextLine() {
 		term.lock();
 		try {
-
-			term.drawCursor();
 			cursorX = 0;
 			if (cursorY == termHeight) {
 				term.scrollArea(scrollRegionTop - 1, scrollRegionBottom
 						- scrollRegionTop + 1, -1);
 				term.clearArea(0, scrollRegionBottom - 1, termWidth,
 						scrollRegionBottom);
-				term.redraw(0, scrollRegionTop - 1, termWidth,
-						scrollRegionBottom - scrollRegionTop + 1);
-			} else
-				cursorY += 1;
+			}
+			cursorY += 1;
 			term.setCursor(0, cursorY);
-
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -362,18 +316,14 @@ class TerminalWriter implements ITerminalWriter {
 	public void reverseIndex() {
 		term.lock();
 		try {
-
-			term.drawCursor();
 			if (cursorY == 1) {
 				term.scrollArea(scrollRegionTop - 1, scrollRegionBottom
 						- scrollRegionTop, 1);
 				term.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
-				term.redraw(0, 0, termWidth, termHeight - 1);
 			} else {
 				cursorY -= 1;
 				term.setCursor(cursorX, cursorY);
 			}
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -382,14 +332,11 @@ class TerminalWriter implements ITerminalWriter {
 	public void cursorForward(final ControlSequence args) {
 		term.lock();
 		try {
-
-			term.drawCursor();
 			int arg = args.getArg(0, 1);
 			arg = arg == 0 ? 1 : arg;
 			cursorX += arg;
 			cursorX = Math.min(cursorX, termWidth - 1);
 			term.setCursor(cursorX, cursorY);
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -398,14 +345,11 @@ class TerminalWriter implements ITerminalWriter {
 	public void cursorBackward(final ControlSequence args) {
 		term.lock();
 		try {
-
-			term.drawCursor();
 			int arg = args.getArg(0, 1);
 			arg = arg == 0 ? 1 : arg;
 			cursorX -= arg;
 			cursorX = Math.max(cursorX, 0);
 			term.setCursor(cursorX, cursorY);
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -416,11 +360,9 @@ class TerminalWriter implements ITerminalWriter {
 		try {
 			final int argy = args.getArg(0, 1);
 			final int argx = args.getArg(1, 1);
-			term.drawCursor();
 			cursorX = argx - 1;
 			cursorY = argy;
 			term.setCursor(cursorX, cursorY);
-			term.drawCursor();
 		} finally {
 			term.unlock();
 		}
@@ -528,7 +470,6 @@ class TerminalWriter implements ITerminalWriter {
 	}
 
 	public void restoreCursor(final StoredCursor storedCursor) {
-		term.drawCursor();
 		cursorX = 0;
 		cursorY = 1;
 		if (storedCursor != null) {
@@ -537,7 +478,6 @@ class TerminalWriter implements ITerminalWriter {
 			cursorY = storedCursor.y;
 		}
 		term.setCursor(cursorX, cursorY);
-		term.drawCursor();
 	}
 
 	public Dimension resize(final Dimension pendingResize,
@@ -545,7 +485,7 @@ class TerminalWriter implements ITerminalWriter {
 		term.lock();
 		try {
 			final int oldHeight = termHeight;
-			term.drawCursor();
+			;
 			final Dimension pixelSize = term.doResize(pendingResize, origin);
 
 			termWidth = term.getColumnCount();
@@ -553,8 +493,6 @@ class TerminalWriter implements ITerminalWriter {
 
 			scrollRegionBottom += termHeight - oldHeight;
 			cursorY += termHeight - oldHeight;
-
-			term.drawCursor();
 			return pixelSize;
 		} finally {
 			term.unlock();
@@ -569,9 +507,9 @@ class TerminalWriter implements ITerminalWriter {
 			Arrays.fill(chars, c);
 			final String str = new String(chars);
 
-			for (int row = 1; row <= termHeight; row++)
+			for (int row = 1; row <= termHeight; row++){
 				term.drawString(str, 0, row);
-			term.redraw(0, 0, termWidth, termHeight);
+			}
 		} finally {
 			term.unlock();
 		}
