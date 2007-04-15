@@ -16,7 +16,6 @@ import static com.wittams.gritty.CharacterUtils.*;
 class StateMachine {
 	private final static Logger logger = Logger.getLogger(StateMachine.class);
 	private final TerminalWriter tw;
-	private final EnumSet<Mode> modes = EnumSet.of(Mode.ANSI);
 	private final TtyChannel channel;
 	
 	StateMachine(final TtyChannel channel, final TerminalWriter tw) {
@@ -46,10 +45,6 @@ class StateMachine {
 	void singleIteration() throws IOException {
 		byte b = channel.getChar();
 		
-		synchronized (tw) {
-			tw.startIteration();
-		}
-
 		switch (b) {
 		case 0:
 			break;
@@ -278,33 +273,15 @@ class StateMachine {
 				mode = modeTable[num];
 			}
 			
-			
 			if (mode == null){
 				if(logger.isInfoEnabled()) logger.info("Unknown mode " + num);
 			}else if (on) {
 				if(logger.isInfoEnabled()) logger.info("Modes: adding " + mode);
-				modes.add(mode);
-				synchronized (tw) {
-					switch(mode){
-					case WideColumn:
-						tw.resize(new Dimension(132, 24), RequestOrigin.Remote );
-						tw.clearScreen();
-						tw.restoreCursor(null);
-						break;
-					}
-				}
+				tw.setMode(mode);
+					
 			} else {
 				if(logger.isInfoEnabled()) logger.info("Modes: removing " + mode);
-				modes.remove(mode);
-				synchronized (tw) {
-					switch(mode){
-					case WideColumn:
-						tw.resize(new Dimension(80, 24), RequestOrigin.Remote);
-						tw.clearScreen();
-						tw.restoreCursor(null);
-						break;
-					}
-				}
+				tw.unsetMode(mode);
 			}
 		}
 	}

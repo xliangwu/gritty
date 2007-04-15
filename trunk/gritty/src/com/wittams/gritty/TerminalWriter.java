@@ -8,31 +8,32 @@ import java.awt.Dimension;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.apache.log4j.Logger;
 
-
-class TerminalWriter {
+public class TerminalWriter {
 	private static final Logger logger = Logger.getLogger(TerminalWriter.class);
-
-	private int scrollRegionTop;
-
-	private int scrollRegionBottom;
-
-	private int cursorX = 0;
-
-	private int cursorY = 1;
-
 	private final int tab = 8;
-
+	
+	private int scrollRegionTop;
+	private int scrollRegionBottom;
+	private int cursorX = 0;
+	private int cursorY = 1;
+	
 	private int termWidth = 80;
-
 	private int termHeight = 24;
+	
+	private final TerminalDisplay display;
+	private final BackBuffer backBuffer;
+	private final StyleState styleState;
+	
+	private final EnumSet<Mode> modes = EnumSet.of(Mode.ANSI);
 
-	private Term term;
-
-	public TerminalWriter(final Term term) {
-		this.term = term;
+	public TerminalWriter(final TerminalDisplay term, final BackBuffer buf, final StyleState styleState) {
+		this.display = term;
+		this.backBuffer = buf;
+		this.styleState = styleState;
 
 		termWidth = term.getColumnCount();
 		termHeight = term.getRowCount();
@@ -40,136 +41,121 @@ class TerminalWriter {
 		scrollRegionTop = 1;
 		scrollRegionBottom = termHeight;
 	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.jcraft.jcterm.ITerminalWriter#startIteration()
-	 */
-	public void startIteration() {
-		
+	
+	public void setMode(Mode mode){
+		modes.add(mode);
+		switch(mode){
+		case WideColumn:
+			resize(new Dimension(132, 24), RequestOrigin.Remote );
+			clearScreen();
+			restoreCursor(null);
+			break;
+		}
 	}
-
-	private void startText() {
-		wrapLines();
+	
+	public void unsetMode(Mode mode){
+		modes.remove(mode);
+		switch(mode){
+		case WideColumn:
+			resize(new Dimension(80, 24), RequestOrigin.Remote);
+			clearScreen();
+			restoreCursor(null);
+			break;
+		}
 	}
 
 	private void wrapLines() {
 		if (cursorX >= termWidth) {
 			cursorX = 0;
 			cursorY += 1;
-
-			// scrollY();
-
-			
 		}
 	}
 
 	private void finishText() {
-		term.setCursor(cursorX, cursorY);
+		display.setCursor(cursorX, cursorY);
 		scrollY();
 	}
 
 	public void writeASCII(final byte[] chosenBuffer, final int start,
 			final int length) throws IOException {
-		term.lock();
+		backBuffer.lock();
 		try {
-			startText();
+			wrapLines();
 			if (length != 0) {
-				term.clearArea(cursorX, cursorY - 1, cursorX + length, cursorY);
-				term.drawBytes(chosenBuffer, start, length, cursorX, cursorY);
+				backBuffer.clearArea(cursorX, cursorY - 1, cursorX + length, cursorY);
+				backBuffer.drawBytes(chosenBuffer, start, length, cursorX, cursorY);
 			}
 			cursorX += length;
 			finishText();
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void writeDoubleByte(final byte[] bytesOfChar) throws IOException,
 			UnsupportedEncodingException {
 
-		term.lock();
+		backBuffer.lock();
 		try {
-			startText();
-			term.clearArea(cursorX, cursorY - 1, cursorX + 2, cursorY);
-			term.drawString(new String(bytesOfChar, 0, 2, "EUC-JP"), cursorX,
+			wrapLines();
+			backBuffer.clearArea(cursorX, cursorY - 1, cursorX + 2, cursorY);
+			backBuffer.drawString(new String(bytesOfChar, 0, 2, "EUC-JP"), cursorX,
 					cursorY);
 			cursorX += 2;
 			finishText();
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void scrollY() {
-		term.lock();
+		backBuffer.lock();
 		try {
 			if (cursorY > scrollRegionBottom) {
 				final int dy = scrollRegionBottom - cursorY;
 				cursorY = scrollRegionBottom;
-				term.scrollArea(scrollRegionTop, scrollRegionBottom
+				scrollArea(scrollRegionTop, scrollRegionBottom
 						- scrollRegionTop, dy);
-				term.clearArea(0, cursorY - 1, termWidth, cursorY);
-				term.setCursor(cursorX, cursorY);
+				backBuffer.clearArea(0, cursorY - 1, termWidth, cursorY);
+				display.setCursor(cursorX, cursorY);
 			}
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void newLine() {
-		term.lock();
-		try {
-			cursorY += 1;
-			term.setCursor(cursorX, cursorY);
-			scrollY(); 
-		} finally {
-			term.unlock();
-		}
+		cursorY += 1;
+		display.setCursor(cursorX, cursorY);
+		scrollY(); 
 	}
 
 	public void backspace() {
-		term.lock();
-		try {
-			cursorX -= 1;
-			if (cursorX < 0) {
-				cursorY -= 1;
-				cursorX = termWidth - 1;
-			}
-			term.setCursor(cursorX, cursorY);
-		} finally {
-			term.unlock();
+		cursorX -= 1;
+		if (cursorX < 0) {
+			cursorY -= 1;
+			cursorX = termWidth - 1;
 		}
+		display.setCursor(cursorX, cursorY);
 	}
 
 	public void carriageReturn() {
-		term.lock();
-		try {
-			cursorX = 0;
-			term.setCursor(cursorX, cursorY);
-		} finally {
-			term.unlock();
-		}
+		cursorX = 0;
+		display.setCursor(cursorX, cursorY);
 	}
 
 	public void horizontalTab() {
-		term.lock();
-		try {
-			cursorX = (cursorX / tab + 1) * tab;
-			if (cursorX >= termWidth) {
-				cursorX = 0;
-				cursorY += 1;
-			}
-			term.setCursor(cursorX, cursorY);
-		} finally {
-			term.unlock();
+		cursorX = (cursorX / tab + 1) * tab;
+		if (cursorX >= termWidth) {
+			cursorX = 0;
+			cursorY += 1;
 		}
+		display.setCursor(cursorX, cursorY);
 	}
 
 	public void eraseInDisplay(final ControlSequence args) {
 		// ESC [ Ps J
-		term.lock();
+		backBuffer.lock();
 		try {
 			final int arg = args.getArg(0, 0);
 			int beginY;
@@ -179,7 +165,7 @@ class TerminalWriter {
 			case 0:
 				// Initial line
 				if (cursorX < termWidth) {
-					term.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
+					backBuffer.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
 				}
 				// Rest
 				beginY = cursorY;
@@ -188,7 +174,7 @@ class TerminalWriter {
 				break;
 			case 1:
 				// initial line
-				term.clearArea(0, cursorY - 1, cursorX + 1, cursorY);
+				backBuffer.clearArea(0, cursorY - 1, cursorX + 1, cursorY);
 
 				beginY = 0;
 				endY = cursorY - 1;
@@ -207,16 +193,16 @@ class TerminalWriter {
 			if (beginY != endY)
 				clearLines(beginY, endY);
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void clearLines(final int beginY, final int endY) {
-		term.lock();
+		backBuffer.lock();
 		try {
-			term.clearArea(0, beginY, termWidth, endY);
+			backBuffer.clearArea(0, beginY, termWidth, endY);
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
@@ -226,146 +212,137 @@ class TerminalWriter {
 
 	public void eraseInLine(final ControlSequence args) {
 		// ESC [ Ps K
-		term.lock();
+		backBuffer.lock();
 		try {
 			final int arg = args.getArg(0, 0);
 
 			switch (arg) {
 			case 0:
 				if (cursorX < termWidth) {
-					term.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
+					backBuffer.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
 				}
 				break;
 			case 1:
 				final int extent = Math.min(cursorX + 1, termWidth);
-				term.clearArea(0, cursorY - 1, extent, cursorY);
+				backBuffer.clearArea(0, cursorY - 1, extent, cursorY);
 				break;
 			case 2:
-				term.clearArea(0, cursorY - 1, termWidth, cursorY);
+				backBuffer.clearArea(0, cursorY - 1, termWidth, cursorY);
 				break;
 			default:
 				logger.error("Unsupported erase in line mode:" + arg);
 				break;
 			}
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void cursorUp(final ControlSequence args) {
-		term.lock();
+		backBuffer.lock();
 		try {
 			int arg = args.getArg(0, 0);
 			arg = arg == 0 ? 1 : arg;
 
 			cursorY -= arg;
 			cursorY = Math.max(cursorY, 1);
-			term.setCursor(cursorX, cursorY);
+			display.setCursor(cursorX, cursorY);
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void cursorDown(final ControlSequence args) {
-		term.lock();
+		backBuffer.lock();
 		try {
 			int arg = args.getArg(0, 0);
 			arg = arg == 0 ? 1 : arg;
 			cursorY += arg;
 			cursorY = Math.min(cursorY, termHeight);
-			term.setCursor(cursorX, cursorY);
+			display.setCursor(cursorX, cursorY);
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void index() {
-		term.lock();
+		backBuffer.lock();
 		try {
 			if (cursorY == termHeight) {
-				term.scrollArea(scrollRegionTop, scrollRegionBottom
+				scrollArea(scrollRegionTop, scrollRegionBottom
 						- scrollRegionTop, -1);
-				term.clearArea(0, scrollRegionBottom - 1, termWidth,
+				backBuffer.clearArea(0, scrollRegionBottom - 1, termWidth,
 						scrollRegionBottom);
 			} else {
 				cursorY += 1;
-				term.setCursor(cursorX, cursorY);
+				display.setCursor(cursorX, cursorY);
 			}
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
+	// Dodgy ?
+	private void scrollArea(int y, int h, int dy){
+		display.scrollArea(y,h,dy);
+		backBuffer.scrollArea(y, h, dy);
+	}
+
 	public void nextLine() {
-		term.lock();
+		backBuffer.lock();
 		try {
 			cursorX = 0;
 			if (cursorY == termHeight) {
-				term.scrollArea(scrollRegionTop - 1, scrollRegionBottom
+				scrollArea(scrollRegionTop - 1, scrollRegionBottom
 						- scrollRegionTop + 1, -1);
-				term.clearArea(0, scrollRegionBottom - 1, termWidth,
+				backBuffer.clearArea(0, scrollRegionBottom - 1, termWidth,
 						scrollRegionBottom);
 			}
 			cursorY += 1;
-			term.setCursor(0, cursorY);
+			display.setCursor(0, cursorY);
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void reverseIndex() {
-		term.lock();
+		backBuffer.lock();
 		try {
 			if (cursorY == 1) {
-				term.scrollArea(scrollRegionTop - 1, scrollRegionBottom
+				scrollArea(scrollRegionTop - 1, scrollRegionBottom
 						- scrollRegionTop, 1);
-				term.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
+				backBuffer.clearArea(cursorX, cursorY - 1, termWidth, cursorY);
 			} else {
 				cursorY -= 1;
-				term.setCursor(cursorX, cursorY);
+				display.setCursor(cursorX, cursorY);
 			}
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 
 	public void cursorForward(final ControlSequence args) {
-		term.lock();
-		try {
-			int arg = args.getArg(0, 1);
-			arg = arg == 0 ? 1 : arg;
-			cursorX += arg;
-			cursorX = Math.min(cursorX, termWidth - 1);
-			term.setCursor(cursorX, cursorY);
-		} finally {
-			term.unlock();
-		}
+		int arg = args.getArg(0, 1);
+		arg = arg == 0 ? 1 : arg;
+		cursorX += arg;
+		cursorX = Math.min(cursorX, termWidth - 1);
+		display.setCursor(cursorX, cursorY);
 	}
 
 	public void cursorBackward(final ControlSequence args) {
-		term.lock();
-		try {
-			int arg = args.getArg(0, 1);
-			arg = arg == 0 ? 1 : arg;
-			cursorX -= arg;
-			cursorX = Math.max(cursorX, 0);
-			term.setCursor(cursorX, cursorY);
-		} finally {
-			term.unlock();
-		}
+		int arg = args.getArg(0, 1);
+		arg = arg == 0 ? 1 : arg;
+		cursorX -= arg;
+		cursorX = Math.max(cursorX, 0);
+		display.setCursor(cursorX, cursorY);
 	}
 
 	public void cursorPosition(final ControlSequence args) {
-		term.lock();
-		try {
-			final int argy = args.getArg(0, 1);
-			final int argx = args.getArg(1, 1);
-			cursorX = argx - 1;
-			cursorY = argy;
-			term.setCursor(cursorX, cursorY);
-		} finally {
-			term.unlock();
-		}
+		final int argy = args.getArg(0, 1);
+		final int argx = args.getArg(1, 1);
+		cursorX = argx - 1;
+		cursorY = argy;
+		display.setCursor(cursorX, cursorY);
 	}
 
 	public void setScrollingRegion(final ControlSequence args) {
@@ -416,7 +393,7 @@ class TerminalWriter {
 				clearCharacterAttributes();
 				break;
 			case 1:// Bright
-				term.setBold(true);
+				styleState.setBold(true);
 				break;
 			case 2:// Dim
 				break;
@@ -425,7 +402,7 @@ class TerminalWriter {
 			case 5:// Blink on
 				break;
 			case 7:// Reverse video on
-				term.setReverseVideo();
+				styleState.setReverseVideo();
 				break;
 			case 8: // Hidden
 				break;
@@ -438,26 +415,20 @@ class TerminalWriter {
 				bg = colors[arg - 40];
 
 			if (fg != null)
-				term.setCurrentForeground(fg);
+				styleState.setCurrentForeground(fg);
 			if (bg != null)
-				term.setCurrentBackground(bg);
+				styleState.setCurrentBackground(bg);
 
 		}
 	}
 
 	private void clearCharacterAttributes() {
-		term.setBold(false);
-		term.resetColors();
-	}
-
-	public void reset() {
-		termWidth = term.getColumnCount();
-		termHeight = term.getRowCount();
-		clearCharacterAttributes();
+		styleState.setBold(false);
+		styleState.resetColors();
 	}
 
 	public void beep() {
-		term.beep();
+		display.beep();
 	}
 
 	public int distanceToLineEnd() {
@@ -477,41 +448,34 @@ class TerminalWriter {
 			cursorX = storedCursor.x;
 			cursorY = storedCursor.y;
 		}
-		term.setCursor(cursorX, cursorY);
+		display.setCursor(cursorX, cursorY);
 	}
 
-	public Dimension resize(final Dimension pendingResize,
-			final RequestOrigin origin) {
-		term.lock();
-		try {
-			final int oldHeight = termHeight;
-			;
-			final Dimension pixelSize = term.doResize(pendingResize, origin);
+	public Dimension resize(final Dimension pendingResize, final RequestOrigin origin) {
+		final int oldHeight = termHeight;
+		final Dimension pixelSize = display.doResize(pendingResize, origin);
 
-			termWidth = term.getColumnCount();
-			termHeight = term.getRowCount();
+		termWidth = display.getColumnCount();
+		termHeight = display.getRowCount();
 
-			scrollRegionBottom += termHeight - oldHeight;
-			cursorY += termHeight - oldHeight;
-			return pixelSize;
-		} finally {
-			term.unlock();
-		}
+		scrollRegionBottom += termHeight - oldHeight;
+		cursorY += termHeight - oldHeight;
+		cursorY = Math.max(1, cursorY);
+		return pixelSize;
 	}
 
 	public void fillScreen(final char c) {
-		term.lock();
+		backBuffer.lock();
 		try {
-
 			final char[] chars = new char[termWidth];
 			Arrays.fill(chars, c);
 			final String str = new String(chars);
 
 			for (int row = 1; row <= termHeight; row++){
-				term.drawString(str, 0, row);
+				backBuffer.drawString(str, 0, row);
 			}
 		} finally {
-			term.unlock();
+			backBuffer.unlock();
 		}
 	}
 }

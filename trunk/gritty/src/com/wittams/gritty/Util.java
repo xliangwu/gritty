@@ -2,7 +2,9 @@ package com.wittams.gritty;
 
 import java.lang.reflect.Array;
 
+// In Java 5, the java.util.Arrays class has no copyOf() members...
 public class Util {
+	@SuppressWarnings("unchecked")
 	public static <T> T[] copyOf(T[] original, int newLength){
 		Class<T> type = (Class<T>) original.getClass().getComponentType();
 		T[] newArr = (T[]) Array.newInstance(type, newLength);

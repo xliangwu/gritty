@@ -28,14 +28,13 @@ import java.io.IOException;
 
 public class Emulator {
 	final protected TerminalWriter tw;
-
 	final protected TtyChannel channel;
 
 	protected final StateMachine sm;
 
-	public Emulator(final Term term, final TtyChannel channel) {
+	public Emulator(final TerminalWriter tw, final TtyChannel channel) {
 		this.channel = channel;
-		tw = new TerminalWriter(term);
+		this.tw = tw;
 		sm = new StateMachine(this.channel, tw);
 	}
 
@@ -55,9 +54,5 @@ public class Emulator {
 		return CharacterUtils.getCode(key);
 	}
 
-	public void reset(){
-		if (tw != null)
-			tw.reset();
-	}
 
 }

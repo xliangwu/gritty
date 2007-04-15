@@ -17,25 +17,18 @@ public class BackBuffer {
 	private  Style[] styleBuf;
 	private BitSet damage;
 	
-	private  Style currentStyle = Style.EMPTY;
-
+	StyleState styleState;
+	
 	private int width;
 	private int height;
 	
 	private final Lock lock = new ReentrantLock();
 	
-	BackBuffer(final int width, final int height) {
+	public BackBuffer(final int width, final int height, StyleState styleState) {
+		this.styleState = styleState;
 		allocateBuffers(width, height);
 	}
 
-	private void rollStyle() {
-		currentStyle = currentStyle.clone();		
-	}
-	
-	private Style getCanonicalStyle() {
-		return Style.getCanonicalStyle(currentStyle);
-	}
-	
 	private void allocateBuffers(final int width, final int height) {
 		this.width = width;
 		this.height = height;
@@ -126,7 +119,7 @@ public class BackBuffer {
 		for (int i = 0; i < len; i++) {
 			final int location = adjY * width + x + i;
 			buf[location] = (char) bytes[s + i]; // Arraycopy does not convert
-			styleBuf[location] = getCanonicalStyle();
+			styleBuf[location] = styleState.getCurrent();
 		}
 		damage.set(adjY * width + x, adjY * width + x + len );
 	}
@@ -141,7 +134,7 @@ public class BackBuffer {
 		str.getChars(0, str.length() - 1, buf, adjY * width + x);
 		for(int i = 0; i < str.length(); i++ ){
 			final int location = adjY * width + x + i;
-			styleBuf[location] = getCanonicalStyle();
+			styleBuf[location] = styleState.getCurrent();
 		}
 		damage.set(adjY * width + x, adjY * width + x + str.length() );
 	}
@@ -179,32 +172,6 @@ public class BackBuffer {
 				System.arraycopy(styleBuf, line * width, styleBuf, (line + dy) * width, width);
 				damage.set( (line + dy) * width, (line + dy + 1) * width );
 			}
-	}
-
-	public void setBold(final boolean val) {
-		rollStyle();
-		currentStyle.setOption(Style.StyleOptions.BOLD, val);
-	}
-
-	public void resetColors() {
-		rollStyle();
-		currentStyle.setForeground(Style.FOREGROUND);
-		currentStyle.setBackground(Style.BACKGROUND);
-	}
-
-	public void setCurrentBackground(final Color bg) {
-		rollStyle();
-		currentStyle.setBackground(bg);
-	}
-
-	public void setCurrentForeground(final Color fg) {
-		rollStyle();
-		currentStyle.setForeground(fg);
-	}
-
-	public void setReverseVideo() {
-		rollStyle();
-		currentStyle.setOption(Style.StyleOptions.REVERSE, true);
 	}
 
 	public String getStyleLines(){

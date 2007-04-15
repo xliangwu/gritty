@@ -1,6 +1,7 @@
-package com.wittams.gritty;
+package com.wittams.gritty.swing;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JPanel;
@@ -8,20 +9,34 @@ import javax.swing.JScrollBar;
 
 import org.apache.log4j.Logger;
 
+import com.wittams.gritty.BackBuffer;
+import com.wittams.gritty.Emulator;
+import com.wittams.gritty.ScrollBuffer;
+import com.wittams.gritty.StyleState;
+import com.wittams.gritty.TerminalWriter;
+import com.wittams.gritty.Tty;
+import com.wittams.gritty.TtyChannel;
+
 public class GrittyTerminal extends JPanel{
 	private static final Logger logger = Logger.getLogger(GrittyTerminal.class);
 	private static final long serialVersionUID = -8213232075937432833L;
 	
+	private final StyleState styleState;
+	private final BackBuffer backBuffer;
+	private final ScrollBuffer scrollBuffer;
 	private final TermPanel termPanel ;
 	private final JScrollBar scrollBar;
-	private Emulator emulator;
-	private TtyChannel termIOBuffer;
-	private Thread emuThread;
+	
 	private Tty tty;
+	private TtyChannel termIOBuffer;
+	private TerminalWriter terminalWriter;
+	private Emulator emulator;
+	
+	private Thread emuThread;
 	
 	private AtomicBoolean sessionRunning = new AtomicBoolean();
 	
-	static enum BufferType{
+	public static enum BufferType{
 		Back(){ 
 			String getValue(GrittyTerminal term ){
 				return term.getTermPanel().getBackBuffer().getLines();
@@ -48,11 +63,16 @@ public class GrittyTerminal extends JPanel{
 	
 	public GrittyTerminal(){
 		super(new BorderLayout());
-		termPanel = new TermPanel();
-		add(termPanel, BorderLayout.CENTER );
-		scrollBar = new JScrollBar();
-		add(scrollBar, BorderLayout.EAST );
 		
+		styleState = new StyleState();
+		backBuffer = new BackBuffer(80, 24, styleState);
+		scrollBuffer = new ScrollBuffer();
+		
+		termPanel = new TermPanel(backBuffer, scrollBuffer, styleState);
+		scrollBar = new JScrollBar();
+		
+		add(termPanel, BorderLayout.CENTER );
+		add(scrollBar, BorderLayout.EAST );
 		scrollBar.setModel(termPanel.getBoundedRangeModel() );
 		sessionRunning.set(false);
 	}
@@ -68,7 +88,8 @@ public class GrittyTerminal extends JPanel{
 	public void setTty(Tty tty){
 		this.tty = tty;
 		termIOBuffer = new TtyChannel(tty);
-		emulator = new Emulator(termPanel, termIOBuffer);
+		terminalWriter = new TerminalWriter(termPanel, backBuffer, styleState);
+		emulator = new Emulator(terminalWriter, termIOBuffer);
 		this.termPanel.setEmulator(emulator);
 	}
 
@@ -99,5 +120,14 @@ public class GrittyTerminal extends JPanel{
 				sessionRunning.set(false);
 			}
 		}		
+	}
+
+	public String getBufferText(BufferType type){
+		return type.getValue(this);
+	}
+	
+	@Override
+	public Dimension getPreferredSize(){
+		return new Dimension( termPanel.getPixelWidth() + scrollBar.getWidth(), termPanel.getPixelHeight());
 	}
 }
