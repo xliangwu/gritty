@@ -56,6 +56,7 @@ import javax.swing.JComponent;
 import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.text.StyledEditorKit.UnderlineAction;
 
 import org.apache.log4j.Logger;
 
@@ -69,6 +70,7 @@ import com.wittams.gritty.Style;
 import com.wittams.gritty.StyleState;
 import com.wittams.gritty.StyledRunConsumer;
 import com.wittams.gritty.TerminalDisplay;
+import com.wittams.gritty.Util;
 
 public class TermPanel extends JComponent implements KeyListener, TerminalDisplay, ClipboardOwner, StyledRunConsumer {
 	private static final Logger logger = Logger.getLogger(TermPanel.class);
@@ -78,14 +80,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	private BufferedImage img;
 
 	private Graphics2D gfx;
-
-	/*private final Color chosenBackground = Color.WHITE;
-
-	private final Color chosenForeground = Color.BLACK;
-
-	private Color currentBackground = chosenBackground;
-
-	private Color currentForeground = chosenForeground; */
 
 	private final Component termComponent = this;
 
@@ -473,9 +467,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 
 			g.fillRect(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
 					(bottom.x - top.x) * charSize.width, charSize.height);
-			/*g.setClip(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
-					(bottom.x - top.x) * charSize.width, charSize.height);
-			g.drawImage(img, 0, 0, termComponent); */
 
 		} else {
 			top = selectionStart.y < selectionEnd.y ? selectionStart
@@ -485,39 +476,33 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 			/* to end of first line */
 			g.fillRect(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
 					(termSize.width - top.x) * charSize.width, charSize.height);
-			/*g.setClip(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
-					(termSize.width - top.x) * charSize.width, charSize.height);
-			g.drawImage(img, 0, 0, termComponent); */
 
 			if (bottom.y - top.y > 1) {
 				/* intermediate lines */
 				g.fillRect(0, (top.y + 1 - clientScrollOrigin) * charSize.height,
 						termSize.width * charSize.width, (bottom.y - top.y - 1)
 								* charSize.height);
-				/*g.setClip(0, (top.y + 1) * charSize.height, getPixelWidth(),
-						(bottom.y - top.y - 1 - clientScrollOrigin) * charSize.height);
-				g.drawImage(img, 0, 0, termComponent); */
 			}
 
 			/* from beginning of last line */
 
 			g.fillRect(0, (bottom.y  - clientScrollOrigin) * charSize.height, bottom.x
 					* charSize.width, charSize.height);
-		/*	g.setClip(0, (bottom.y  - clientScrollOrigin) * charSize.height, bottom.x * charSize.width,
-					charSize.height);
-			g.drawImage(img, 0, 0, termComponent); */
-
 		}
 	}
 
 	public void consumeRun(final int x, final int y, final Style style, final char[] buf, final int start, final int len) {
-		gfx.setColor(style.getBackground());
+		gfx.setColor(style.getBackgroundForRun());
 		gfx.fillRect(x * charSize.width, (y - clientScrollOrigin) * charSize.height, len * charSize.width, charSize.height);
 		
-		gfx.setFont( style.hasOption(Style.StyleOptions.BOLD) ? boldFont : normalFont );
-		gfx.setColor(style.getForeground());
+		gfx.setFont( style.hasOption(Style.Option.BOLD) ? boldFont : normalFont );
+		gfx.setColor(style.getForegroundForRun());
 		
-		gfx.drawChars(buf, start, len, x * charSize.width, (y + 1 - clientScrollOrigin) * charSize.height - descent);
+		int baseLine =  (y + 1 - clientScrollOrigin) * charSize.height - descent;
+		gfx.drawChars(buf, start, len, x * charSize.width, baseLine );
+		if(style.hasOption(Style.Option.UNDERSCORE)){
+			gfx.drawLine(x * charSize.width , baseLine + 1, (x + len) * charSize.width , baseLine + 1);
+		}
 	}
 	
 	private void clientScrollOriginChanged(int oldOrigin) {
@@ -575,26 +560,29 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 				return;
 			}
 		}
-		//backBuffer.lock();
 		try{
 			framesSkipped =0;
-			boolean hasDamage = backBuffer.hasDamage();
-			boolean needScroll = clientScrollOrigin != newOrigin;
-			if( needScroll ){
+			
+			boolean serverScroll = pendingScrolls.enact(gfx, getPixelWidth(), charSize.height );
+			
+			boolean clientScroll = clientScrollOrigin != newOrigin;
+			if( clientScroll ){
 		    	final int oldOrigin = clientScrollOrigin;
 		    	clientScrollOrigin = newOrigin;
 		    	clientScrollOriginChanged(oldOrigin);
 		    }
-				
+			
+			boolean hasDamage = backBuffer.hasDamage();
 			if(hasDamage){
 				noDamage = 0;
 				
 				backBuffer.pumpRunsFromDamage(this);
 				backBuffer.resetDamage();
+			}else{ 
+				noDamage++;
 			}
 			
-			if(!hasDamage) noDamage++;
-			if(needScroll || hasDamage || cursorChanged){
+			if(serverScroll || clientScroll || hasDamage || cursorChanged){
 				repaint();
 				cursorChanged = false;
 			}
@@ -602,7 +590,10 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 			backBuffer.unlock();
 		}
 	}
-
+	
+	
+	
+	
 	public void scrollArea(final int y, final int h, int dy) {
 		if( dy < 0 ){ 
 			//Moving lines off the top of the screen
@@ -614,12 +605,50 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		}
 		selectionStart = null;
 		selectionEnd = null;
+		pendingScrolls.add(y,h,dy);
 	}
 	
-	private void scrollAreaImpl(final int y, final int h, final int dy) {
-		getGraphics().copyArea(0, y, getPixelWidth(), h, 0, dy);
-		gfx.copyArea(0, y, getPixelWidth(), h, 0, dy);
+	static class PendingScrolls{
+		int[] ys = new int[10];
+		int[] hs = new int[10]; 
+		int[] dys = new int[10];
+		int scrollCount = -1;
+		
+		void ensureArrays(int index){
+			int curLen = ys.length;
+			if(index >= curLen){
+				ys = Util.copyOf(ys, curLen * 2);
+				hs = Util.copyOf(hs, curLen * 2);
+				dys = Util.copyOf(dys, curLen * 2);
+			}
+		}
+		
+		void add(int y, int h, int dy){
+			if(dy == 0) return;
+			if( scrollCount >= 0 &&
+			    y == ys[scrollCount] && 
+			    h == hs[scrollCount] ){
+				dys[scrollCount] += dy;
+			}else{
+				scrollCount++;
+				ensureArrays(scrollCount);
+				ys[scrollCount] = y;
+				hs[scrollCount] = h;
+				dys[scrollCount] = dy;
+			}
+		}
+		
+		boolean enact(Graphics2D gfx, int width, int charHeight){
+			if(scrollCount < 0) return false;
+			for(int i = 0; i <= scrollCount; i++ ){
+				gfx.copyArea(0, ys[i] * charHeight, width, hs[i] * charHeight, 0, dys[i] * charHeight);
+			}
+			scrollCount = -1;
+			return true;
+		}
 	}
+	
+	final PendingScrolls pendingScrolls = new PendingScrolls();
 	
 	public void clearArea(final int x1, final int y1, final int x2, final int y2) {
 		backBuffer.clearArea(x1, y1, x2, y2);

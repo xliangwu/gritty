@@ -128,6 +128,6 @@ public class GrittyTerminal extends JPanel{
 	
 	@Override
 	public Dimension getPreferredSize(){
-		return new Dimension( termPanel.getPixelWidth() + scrollBar.getWidth(), termPanel.getPixelHeight());
+		return new Dimension( termPanel.getPixelWidth() + scrollBar.getPreferredSize().width, termPanel.getPixelHeight());
 	}
 }

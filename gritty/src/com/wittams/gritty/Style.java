@@ -22,11 +22,13 @@ public class Style implements Cloneable{
 	static final ChosenColor FOREGROUND = new ChosenColor(Color.BLACK);
 	static final ChosenColor BACKGROUND = new ChosenColor(Color.WHITE);
 	
-	public static enum StyleOptions{
+	public static enum Option{
 		BOLD,
 		BLINK,
 		DIM,
-		REVERSE
+		REVERSE, 
+		UNDERSCORE,
+		HIDDEN
 	}
 	
 	public static final Style EMPTY = new Style();
@@ -48,17 +50,17 @@ public class Style implements Cloneable{
 	
 	private Color foreground;
 	private Color background;
-	private EnumSet<StyleOptions> options;
+	private EnumSet<Option> options;
 	private int number; 
 	
 	Style(){
 		number = count++;
 		foreground = FOREGROUND;
 		background = BACKGROUND;
-		options = EnumSet.noneOf(StyleOptions.class); 
+		options = EnumSet.noneOf(Option.class); 
 	}
 	
-	Style(final Color foreground, final Color background, final EnumSet<StyleOptions> options){
+	Style(final Color foreground, final Color background, final EnumSet<Option> options){
 		number = count++;
 		this.foreground = foreground;
 		this.background = background;
@@ -81,7 +83,7 @@ public class Style implements Cloneable{
 		return background;
 	}
 	
-	public void setOption(final StyleOptions opt, final boolean val) {
+	public void setOption(final Option opt, final boolean val) {
 		if(val) 
 			options.add(opt);
 		else 
@@ -97,7 +99,7 @@ public class Style implements Cloneable{
 		return number;
 	}
 
-	public boolean hasOption(final StyleOptions bold) {
+	public boolean hasOption(final Option bold) {
 		return options.contains(bold);
 	}
 	
@@ -138,6 +140,16 @@ public class Style implements Cloneable{
 		return true;
 	}
 
+	public Color getBackgroundForRun(){
+		return options.contains(Option.REVERSE) ? foreground : background;
+	}
 
+	public Color getForegroundForRun(){
+		return options.contains(Option.REVERSE) ? background : foreground;
+	}
+
+	public void clearOptions(){
+		options.clear();
+	}
 	
 }

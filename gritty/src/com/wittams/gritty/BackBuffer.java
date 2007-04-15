@@ -1,6 +1,5 @@
 package com.wittams.gritty;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -154,7 +153,8 @@ public class BackBuffer {
 				}
 				System.arraycopy(buf, line * width, buf, (line + dy) * width, width);
 				System.arraycopy(styleBuf, line * width, styleBuf, (line + dy) * width, width);
-				damage.set( (line + dy) * width, (line + dy + 1) * width );
+				Util.bitsetCopy(damage, line * width, damage, (line + dy) * width, width);
+				//damage.set( (line + dy) * width, (line + dy + 1) * width );
 			}
 		else
 			// Moving lines up
@@ -170,7 +170,8 @@ public class BackBuffer {
 				
 				System.arraycopy(buf, line * width, buf, (line + dy) * width, width);
 				System.arraycopy(styleBuf, line * width, styleBuf, (line + dy) * width, width);
-				damage.set( (line + dy) * width, (line + dy + 1) * width );
+				Util.bitsetCopy(damage, line * width, damage, (line + dy) * width, width);
+				//damage.set( (line + dy) * width, (line + dy + 1) * width );
 			}
 	}
 

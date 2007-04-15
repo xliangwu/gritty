@@ -377,9 +377,7 @@ public class TerminalWriter {
 	public void setCharacterAttributes(final ControlSequence args) {
 		final int argCount = args.getCount();
 		if (argCount == 0)
-			clearCharacterAttributes();
-		Color fg = null;
-		Color bg = null;
+			styleState.reset();
 
 		for (int i = 0; i < argCount; i++) {
 			final int arg = args.getArg(i, -1);
@@ -390,41 +388,36 @@ public class TerminalWriter {
 
 			switch (arg) {
 			case 0:
-				clearCharacterAttributes();
+				styleState.reset();
 				break;
 			case 1:// Bright
-				styleState.setBold(true);
+				styleState.setOption(Style.Option.BOLD, true);
 				break;
 			case 2:// Dim
+				styleState.setOption(Style.Option.DIM, true);
 				break;
 			case 4:// Underscore on
+				styleState.setOption(Style.Option.UNDERSCORE, true);
 				break;
 			case 5:// Blink on
+				styleState.setOption(Style.Option.BLINK, true);
 				break;
 			case 7:// Reverse video on
-				styleState.setReverseVideo();
+				styleState.setOption(Style.Option.REVERSE, true);
 				break;
 			case 8: // Hidden
+				styleState.setOption(Style.Option.HIDDEN, true);
 				break;
+			default:
+				if (arg >= 30 && arg <= 37){
+					styleState.setCurrentForeground(colors[arg - 30]);
+				}else if (arg >= 40 && arg <= 47){
+					styleState.setCurrentBackground(colors[arg - 40]);
+				}else{
+					logger.error("Unknown character attribute:" + arg);
+				}
 			}
-
-			if (arg >= 30 && arg <= 37)
-				fg = colors[arg - 30];
-
-			if (arg >= 40 && arg <= 47)
-				bg = colors[arg - 40];
-
-			if (fg != null)
-				styleState.setCurrentForeground(fg);
-			if (bg != null)
-				styleState.setCurrentBackground(bg);
-
 		}
-	}
-
-	private void clearCharacterAttributes() {
-		styleState.setBold(false);
-		styleState.resetColors();
 	}
 
 	public void beep() {
