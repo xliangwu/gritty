@@ -22,50 +22,20 @@
 
 package com.wittams.gritty;
 
-import java.awt.Color;
 import java.awt.Dimension;
 
-public interface Term {
+public interface TerminalDisplay {
 	// Size information
 	int getRowCount();
 
 	int getColumnCount();
-
-	int getCharWidth();
-
-	int getCharHeight();
-
-	
-	void clear();
-
 	
 	void setCursor(int x, int y);
 	
-	
-	
-	void scrollArea(int y, int h, int dy);
-	
-	void clearArea(int x1, int y1, int x2, int y2);
-
-	void drawBytes(byte[] buf, int s, int len, int x, int y);
-
-	void drawString(String str, int x, int y);
-
 	void beep();
-
-	void setReverseVideo();
-
-	void setBold(boolean val);
-
-	void setCurrentForeground(Color fg);
-
-	void setCurrentBackground(Color fg);
-
-	void resetColors();
 
 	Dimension doResize(Dimension pendingResize, RequestOrigin origin);
 
-	void lock();
-	void unlock();
+	public void scrollArea(final int y, final int h, int dy);
 	
 }

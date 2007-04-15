@@ -8,8 +8,7 @@ import java.lang.ref.WeakReference;
 import java.util.EnumSet;
 import java.util.WeakHashMap;
 
-
-class Style implements Cloneable{
+public class Style implements Cloneable{
 	static int count = 1;
 	
 	static class ChosenColor extends Color{
@@ -23,7 +22,7 @@ class Style implements Cloneable{
 	static final ChosenColor FOREGROUND = new ChosenColor(Color.BLACK);
 	static final ChosenColor BACKGROUND = new ChosenColor(Color.WHITE);
 	
-	static enum StyleOptions{
+	public static enum StyleOptions{
 		BOLD,
 		BLINK,
 		DIM,
@@ -70,7 +69,7 @@ class Style implements Cloneable{
 		this.foreground = foreground;
 	}
 
-	Color getForeground() {
+	public Color getForeground() {
 		return foreground;
 	}
 
@@ -78,7 +77,7 @@ class Style implements Cloneable{
 		this.background = background;
 	}
 
-	Color getBackground() {
+	public Color getBackground() {
 		return background;
 	}
 	

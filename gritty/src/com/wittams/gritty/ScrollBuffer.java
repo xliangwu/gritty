@@ -106,7 +106,7 @@ public class ScrollBuffer implements StyledRunConsumer {
 	int bufPos;
 	private int totalLines;
 	
-	ScrollBuffer(){
+	public ScrollBuffer(){
 		newSection();
 	}
 

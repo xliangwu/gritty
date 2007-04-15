@@ -20,7 +20,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-package com.wittams.gritty;
+package com.wittams.gritty.swing;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -49,7 +49,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
@@ -60,26 +59,33 @@ import javax.swing.event.ChangeListener;
 
 import org.apache.log4j.Logger;
 
-public class TermPanel extends JComponent implements KeyListener, Term, ClipboardOwner, StyledRunConsumer {
+import com.wittams.gritty.BackBuffer;
+import com.wittams.gritty.Emulator;
+import com.wittams.gritty.RequestOrigin;
+import com.wittams.gritty.ResizePanelDelegate;
+import com.wittams.gritty.ScrollBuffer;
+import com.wittams.gritty.SelectionRunConsumer;
+import com.wittams.gritty.Style;
+import com.wittams.gritty.StyleState;
+import com.wittams.gritty.StyledRunConsumer;
+import com.wittams.gritty.TerminalDisplay;
+
+public class TermPanel extends JComponent implements KeyListener, TerminalDisplay, ClipboardOwner, StyledRunConsumer {
 	private static final Logger logger = Logger.getLogger(TermPanel.class);
 	private static final long serialVersionUID = -1048763516632093014L;
 	private static final double FPS = 20;
 
 	private BufferedImage img;
 
-	private Graphics2D selectGfx;
-
-	private Graphics2D cursorGfx;
-
 	private Graphics2D gfx;
 
-	private final Color chosenBackground = Color.WHITE;
+	/*private final Color chosenBackground = Color.WHITE;
 
 	private final Color chosenForeground = Color.BLACK;
 
 	private Color currentBackground = chosenBackground;
 
-	private Color currentForeground = chosenForeground;
+	private Color currentForeground = chosenForeground; */
 
 	private final Component termComponent = this;
 
@@ -109,25 +115,28 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 
 	protected boolean selectionInProgress;
 
-	private BackBuffer backBuffer;
-
 	private Clipboard clipBoard;
 
 	private ResizePanelDelegate resizePanelDelegate;
 
-	private ScrollBuffer scrollBuffer;
-
+	final private BackBuffer backBuffer;
+	final private ScrollBuffer scrollBuffer;
+	final private StyleState styleState;
+	
 	private final BoundedRangeModel brm = new DefaultBoundedRangeModel(0,80,0,80);
 
 	protected int clientScrollOrigin;
 	protected volatile int newClientScrollOrigin;
 	protected volatile boolean shouldDrawCursor;
 	
-	public TermPanel() {
-		scrollBuffer = new ScrollBuffer();
+	
+	public TermPanel(BackBuffer backBuffer, ScrollBuffer scrollBuffer, StyleState styleState) {
+		this.scrollBuffer = scrollBuffer;
+		this.backBuffer = backBuffer;
+		this.styleState = styleState;
 		brm.setRangeProperties(0, termSize.height, - scrollBuffer.getLineCount() , termSize.height, false );
 		
-		backBuffer = new BackBuffer(termSize.width, termSize.height);
+		
 		currentFont = Font.decode("Monospaced-14");
 		normalFont = currentFont;
 		boldFont = currentFont.deriveFont(Font.BOLD);
@@ -135,12 +144,10 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		establishFontMetrics();
 
 		setUpImages();
-		clear();
 		setUpClipboard();
 		setAntiAliasing(antialiasing);
 
 		setPreferredSize(new Dimension(getPixelWidth(), getPixelHeight()));
-		
 		
 		setSize(getPixelWidth(), getPixelHeight());
 		setFocusable(true);
@@ -153,13 +160,13 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			public void mouseDragged(final MouseEvent e) {
 				final Point charCoords = panelToCharCoords(e.getPoint());
 
-				clearSelection();
 				if (!selectionInProgress) {
 					selectionStart = charCoords;
 					selectionInProgress = true;
+					repaint();
 				}
 				selectionEnd = charCoords;
-				drawSelection();
+				
 			}
 		});
 
@@ -169,17 +176,17 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 				selectionInProgress = false;
 				if ( selectionStart != null && selectionEnd != null)
 					copySelection(selectionStart, selectionEnd);
+				repaint();
 			}
 
 			@Override
 			public void mouseClicked(final MouseEvent e) {
 				requestFocusInWindow();
-				clearSelection();
 				selectionStart = null;
 				selectionEnd = null;
-				drawSelection();
 				if(e.getButton() == MouseEvent.BUTTON3 )
 					pasteSelection();
+				repaint();
 			}
 		});
 
@@ -203,6 +210,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		});
 		setDoubleBuffered(true);
 		redrawTimer.start();
+		repaint();
 	}
 	
 	
@@ -271,36 +279,30 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			
 		}
 	}
-	
-	public void lostOwnership(final Clipboard clipboard, final Transferable contents) {
-	}
+	/* Do not care
+	 */
+	public void lostOwnership(final Clipboard clipboard, final Transferable contents) {}
 
 	private void setUpImages() {
 		final BufferedImage oldImage = img;
 		img = new BufferedImage(getPixelWidth(), getPixelHeight(),
 				BufferedImage.TYPE_INT_RGB);
-
+		
 		gfx = img.createGraphics();
 		gfx.setFont(currentFont);
+		gfx.fillRect(0, 0, getPixelWidth(), getPixelHeight());
 		
 		if (oldImage != null){
 			gfx.drawImage(oldImage, 0, img.getHeight() - oldImage.getHeight(),
 					oldImage.getWidth(), oldImage.getHeight(), termComponent);
 		}
-		cursorGfx = (Graphics2D) img.getGraphics();
-		cursorGfx.setColor(currentForeground);
-		cursorGfx.setXORMode(currentBackground);
-
-		selectGfx = (Graphics2D) img.getGraphics();
-		selectGfx.setColor(Color.GREEN);
-		selectGfx.setXORMode(currentBackground);
 
 	}
 
 	private void sizeTerminalFromComponent() {
 		if (emulator != null) {
-			final int newWidth = getWidth() / getCharWidth();
-			final int newHeight = getHeight() / getCharHeight();
+			final int newWidth = getWidth() / charSize.width ;
+			final int newHeight = getHeight() / charSize.height;
 
 			final Dimension newSize = new Dimension(newWidth, newHeight);
 
@@ -315,16 +317,22 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 
 	public Dimension doResize(final Dimension newSize, final RequestOrigin origin) {
 		if(!newSize.equals(termSize)){
-			backBuffer.doResize(newSize, origin);
-			termSize = (Dimension) newSize.clone();
-			// resize images..
-			setUpImages();
+			backBuffer.lock();
+			try{
+				backBuffer.doResize(newSize, origin);
+				termSize = (Dimension) newSize.clone();
+				// resize images..
+				setUpImages();
+				
+				final Dimension pixelDimension = new Dimension(getPixelWidth(), getPixelHeight());
+				
+				setPreferredSize( pixelDimension );
+				if(resizePanelDelegate != null) resizePanelDelegate.resizedPanel( pixelDimension, origin);
+				brm.setRangeProperties(0, termSize.height, - scrollBuffer.getLineCount() , termSize.height, false );
 			
-			final Dimension pixelDimension = new Dimension(getPixelWidth(), getPixelHeight());
-			
-			setSize( pixelDimension );
-			if(resizePanelDelegate != null) resizePanelDelegate.resizedPanel( pixelDimension, origin);
-			brm.setRangeProperties(0, termSize.height, - scrollBuffer.getLineCount() , termSize.height, false );
+			}finally{
+				backBuffer.unlock();
+			}
 		}
 		return new Dimension(getPixelWidth(), getPixelHeight());
 	}
@@ -354,6 +362,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		if (img != null){
 			g.drawImage(img, 0, 0, termComponent);
 			reallyDrawCursor(g);
+			drawSelection(g);
 		}
 	}
 
@@ -420,27 +429,12 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		return charSize.height * termSize.height;
 	}
 
-	public int getCharWidth() {
-		return charSize.width;
-	}
-
-	public int getCharHeight() {
-		return charSize.height;
-	}
-
 	public int getColumnCount() {
 		return termSize.width;
 	}
 
 	public int getRowCount() {
 		return termSize.height;
-	}
-
-	public void clear() {
-		gfx.setColor(currentBackground);
-		gfx.fillRect(0, 0, getPixelWidth(), getPixelHeight());
-		gfx.setColor(currentForeground);
-		backBuffer.clear();
 	}
 
 	public void drawCursor() {
@@ -450,22 +444,21 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 	public void reallyDrawCursor(Graphics g) {
 		final int y = (cursor.y - 1 - clientScrollOrigin);
 		if(y >= 0 && y < termSize.height ){
-			g.setColor(currentForeground);
-			g.setXORMode(currentBackground);
+			Style current = styleState.getCurrent();
+			g.setColor(current.getForeground());
+			g.setXORMode(current.getBackground());
 			g.fillRect(cursor.x * charSize.width, y * charSize.height, 
 					   charSize.width, charSize.height);
 		}
 	}
 
-	public void clearSelection() {
-		drawSelection();
-	}
-
-	public void drawSelection() {
+	public void drawSelection(Graphics g) {
 		/* which is the top one */
 		Point top;
 		Point bottom;
-		final Graphics g = getGraphics();
+		Style current = styleState.getCurrent();
+		g.setColor(current.getForeground());
+		g.setXORMode(current.getBackground());
 		if (selectionStart == null || selectionEnd == null)
 			return;
 
@@ -478,11 +471,11 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			bottom = selectionStart.x >= selectionEnd.x ? selectionStart
 					: selectionEnd;
 
-			selectGfx.fillRect(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
+			g.fillRect(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
 					(bottom.x - top.x) * charSize.width, charSize.height);
-			g.setClip(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
+			/*g.setClip(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
 					(bottom.x - top.x) * charSize.width, charSize.height);
-			g.drawImage(img, 0, 0, termComponent);
+			g.drawImage(img, 0, 0, termComponent); */
 
 		} else {
 			top = selectionStart.y < selectionEnd.y ? selectionStart
@@ -490,29 +483,29 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			bottom = selectionStart.y > selectionEnd.y ? selectionStart
 					: selectionEnd;
 			/* to end of first line */
-			selectGfx.fillRect(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
+			g.fillRect(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
 					(termSize.width - top.x) * charSize.width, charSize.height);
-			g.setClip(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
+			/*g.setClip(top.x * charSize.width, (top.y - clientScrollOrigin) * charSize.height,
 					(termSize.width - top.x) * charSize.width, charSize.height);
-			g.drawImage(img, 0, 0, termComponent);
+			g.drawImage(img, 0, 0, termComponent); */
 
 			if (bottom.y - top.y > 1) {
 				/* intermediate lines */
-				selectGfx.fillRect(0, (top.y + 1 - clientScrollOrigin) * charSize.height,
+				g.fillRect(0, (top.y + 1 - clientScrollOrigin) * charSize.height,
 						termSize.width * charSize.width, (bottom.y - top.y - 1)
 								* charSize.height);
-				g.setClip(0, (top.y + 1) * charSize.height, getPixelWidth(),
+				/*g.setClip(0, (top.y + 1) * charSize.height, getPixelWidth(),
 						(bottom.y - top.y - 1 - clientScrollOrigin) * charSize.height);
-				g.drawImage(img, 0, 0, termComponent);
+				g.drawImage(img, 0, 0, termComponent); */
 			}
 
 			/* from beginning of last line */
 
-			selectGfx.fillRect(0, (bottom.y  - clientScrollOrigin) * charSize.height, bottom.x
+			g.fillRect(0, (bottom.y  - clientScrollOrigin) * charSize.height, bottom.x
 					* charSize.width, charSize.height);
-			g.setClip(0, (bottom.y  - clientScrollOrigin) * charSize.height, bottom.x * charSize.width,
+		/*	g.setClip(0, (bottom.y  - clientScrollOrigin) * charSize.height, bottom.x * charSize.width,
 					charSize.height);
-			g.drawImage(img, 0, 0, termComponent);
+			g.drawImage(img, 0, 0, termComponent); */
 
 		}
 	}
@@ -588,11 +581,9 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			boolean hasDamage = backBuffer.hasDamage();
 			boolean needScroll = clientScrollOrigin != newOrigin;
 			if( needScroll ){
-		    	drawSelection();
 		    	final int oldOrigin = clientScrollOrigin;
 		    	clientScrollOrigin = newOrigin;
 		    	clientScrollOriginChanged(oldOrigin);
-		    	drawSelection();
 		    }
 				
 			if(hasDamage){
@@ -621,10 +612,8 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 			
 			brm.setRangeProperties(0, termSize.height, - scrollBuffer.getLineCount() , termSize.height, false );
 		}
-		drawSelection();
 		selectionStart = null;
 		selectionEnd = null;
-		backBuffer.scrollArea(y, h, dy);
 	}
 	
 	private void scrollAreaImpl(final int y, final int h, final int dy) {
@@ -669,36 +658,12 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 		gfx.setRenderingHints(hints);
 	}
 
-	public void setCurrentForeground(final Color fg) {
-		currentForeground = fg;
-		gfx.setColor(currentForeground);
-		backBuffer.setCurrentForeground(fg);
-	}
-
-	public void setCurrentBackground(final Color bg) {
-		currentBackground = bg;
-		backBuffer.setCurrentBackground(bg);
-	}
-
 	public void setBold(final boolean val) {
 		if (val)
 			currentFont = boldFont;
 		else
 			currentFont = normalFont;
 		gfx.setFont(currentFont);
-		backBuffer.setBold(val);
-	}
-
-	public void setReverseVideo() {
-		setCurrentBackground(chosenForeground);
-		setCurrentForeground(chosenBackground);
-		backBuffer.setReverseVideo();
-	}
-
-	public void resetColors() {
-		setCurrentBackground(chosenBackground);
-		setCurrentForeground(chosenForeground);
-		backBuffer.resetColors();
 	}
 
 	public BoundedRangeModel getBoundedRangeModel() {
@@ -716,9 +681,7 @@ public class TermPanel extends JComponent implements KeyListener, Term, Clipboar
 	public void lock() {
 		backBuffer.lock();
 	}
-
-
-
+	
 	public void unlock() {
 		backBuffer.unlock();
 	}

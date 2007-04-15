@@ -15,8 +15,8 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
-import com.wittams.gritty.Main;
 import com.wittams.gritty.Tty;
+import com.wittams.gritty.swing.standalone.Main;
 
 public class JSshTty implements Tty { 
 	private InputStream in = null;
