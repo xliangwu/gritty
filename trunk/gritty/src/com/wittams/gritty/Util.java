@@ -1,6 +1,7 @@
 package com.wittams.gritty;
 
 import java.lang.reflect.Array;
+import java.util.BitSet;
 
 // In Java 5, the java.util.Arrays class has no copyOf() members...
 public class Util {
@@ -28,6 +29,12 @@ public class Util {
 		System.arraycopy(original, 0, newArr, 0, Math.min(original.length, newLength));
 		
 		return newArr;	
+	}
+
+	public static void bitsetCopy(BitSet src, int srcOffset, BitSet dest, int destOffset, int length){
+		for(int i = 0; i < length; i++ ){
+			dest.set(destOffset + i, src.get(srcOffset + i) );
+		}
 	}
 	
 }

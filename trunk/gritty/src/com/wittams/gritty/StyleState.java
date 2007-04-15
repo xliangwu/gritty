@@ -13,17 +13,6 @@ public class StyleState {
 		return Style.getCanonicalStyle(currentStyle);
 	}
 	
-	public void setBold(final boolean val) {
-		rollStyle();
-		currentStyle.setOption(Style.StyleOptions.BOLD, val);
-	}
-
-	public void resetColors() {
-		rollStyle();
-		currentStyle.setForeground(Style.FOREGROUND);
-		currentStyle.setBackground(Style.BACKGROUND);
-	}
-
 	public void setCurrentBackground(final Color bg) {
 		rollStyle();
 		currentStyle.setBackground(bg);
@@ -34,9 +23,17 @@ public class StyleState {
 		currentStyle.setForeground(fg);
 	}
 
-	public void setReverseVideo() {
+	public void setOption(Style.Option opt, boolean val){
 		rollStyle();
-		currentStyle.setOption(Style.StyleOptions.REVERSE, true);
+		currentStyle.setOption(opt, val);
+	}
+
+	public void reset(){
+		rollStyle();
+		currentStyle.setForeground(Style.FOREGROUND);
+		currentStyle.setBackground(Style.BACKGROUND);
+		currentStyle.clearOptions();
+		
 	}
 	
 }

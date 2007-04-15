@@ -28,10 +28,23 @@ public class JSshTty implements Tty {
 	private String user = System.getProperty("user.name").toLowerCase();
 	private String host = "localhost";
 	
+	private Dimension pendingTermSize;
+	private Dimension pendingPixelSize;
+	
 	public void resize(Dimension termSize, Dimension pixelSize) {
-		if(channel != null)
-			channel.setPtySize(termSize.width,termSize.height, pixelSize.width, pixelSize.height);
+			pendingTermSize = termSize;
+			pendingPixelSize = pixelSize;
+			if(channel != null) resizeImmediately();
 	}
+	
+	private void resizeImmediately() {
+		if(pendingTermSize != null && pendingPixelSize != null){
+			channel.setPtySize(pendingTermSize.width,pendingTermSize.height, pendingPixelSize.width, pendingPixelSize.height);
+			pendingTermSize = null;
+			pendingPixelSize = null;
+		}
+	}
+	
 	
 	public void close(){
 		if (session != null) {
@@ -41,14 +54,6 @@ public class JSshTty implements Tty {
 			in = null;
 			out = null;
 		}
-	}
-
-	public InputStream getInputStream(){
-		return in;
-	}
-
-	public OutputStream getOuputStream(){
-		return out;
 	}
 	
 	public void init(){
@@ -61,6 +66,7 @@ public class JSshTty implements Tty {
 			in = channel.getInputStream();
 			out = channel.getOutputStream();
 			channel.connect();
+			resizeImmediately();
 		} catch (final IOException e) {
 			Main.logger.error("Error opening channel",e);
 			return;
