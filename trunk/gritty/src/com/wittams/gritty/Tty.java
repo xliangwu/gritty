@@ -4,7 +4,7 @@ import java.awt.Dimension;
 import java.io.IOException;
 
 public interface Tty {
-	void init();
+	boolean init(Questioner q);
 	void close();
 	void resize(Dimension termSize, Dimension pixelSize);
 	String getName();

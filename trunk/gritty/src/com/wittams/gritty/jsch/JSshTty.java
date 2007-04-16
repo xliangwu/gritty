@@ -15,6 +15,7 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
+import com.wittams.gritty.Questioner;
 import com.wittams.gritty.Tty;
 import com.wittams.gritty.swing.standalone.Main;
 
@@ -25,8 +26,8 @@ public class JSshTty implements Tty {
 	private ChannelShell channel;
 	private int port = 22;
 	
-	private String user = System.getProperty("user.name").toLowerCase();
-	private String host = "localhost";
+	private String user = null;
+	private String host = null;
 	
 	private Dimension pendingTermSize;
 	private Dimension pendingPixelSize;
@@ -56,51 +57,74 @@ public class JSshTty implements Tty {
 		}
 	}
 	
-	public void init(){
+	public boolean init(Questioner q){
 		
-		getAuthDetails();
+		getAuthDetails(q);
 
 		try {
-			session = connectSession(port);
+			session = connectSession(q);
 			channel = (ChannelShell) session.openChannel("shell");
 			in = channel.getInputStream();
 			out = channel.getOutputStream();
 			channel.connect();
 			resizeImmediately();
+			return true;
 		} catch (final IOException e) {
+			q.showMessage(e.getMessage());
 			Main.logger.error("Error opening channel",e);
-			return;
+			return false;
 		} catch (final JSchException e) {
+			q.showMessage(e.getMessage());
 			Main.logger.error("Error opening session or channel",e);
-			return;
+			return false;
 		}
-
-		
 	}
-
-	private Session connectSession(int port) throws JSchException {
+	
+	private Session connectSession(Questioner questioner) throws JSchException {
 		JSch jsch  = new JSch();
 		Session session = null;
-		
 		session = jsch.getSession(user, host, port);
 
-		final UserInfo ui = new SwingUserInfo();
+		final UserInfo ui = new QuestionerUserInfo(questioner);
 		session.setUserInfo(ui);
 
 		final java.util.Properties config = new java.util.Properties();
-
 		config.put("compression.s2c", "zlib,none");
 		config.put("compression.c2s", "zlib,none");
-
 		session.setConfig(config);
-
 		session.setTimeout(5000);
 		session.connect();
 		session.setTimeout(0);
 		
 		return session;
 	}
-
+	
+	private void getAuthDetails(Questioner q){
+		while (true){
+			if(host == null)
+				host = q.questionVisible("host:", "localhost");
+			if (host == null || host.length() == 0)
+				continue;
+			if (host.indexOf(':') != -1) {
+				final String portString = host.substring(host.indexOf(':') + 1);
+				try {
+					port = Integer.parseInt(portString);
+				} catch (final NumberFormatException eee) {
+					q.showMessage("Could not parse port : " + portString);
+					continue;
+				}
+				host = host.substring(0, host.indexOf(':'));
+			}
+			
+			if(user == null)
+				user = q.questionVisible("user:", System.getProperty("user.name").toLowerCase());
+			if (host == null || host.length() == 0)
+				continue;
+			break;
+		}
+	}
+	
+/*
 	private void getAuthDetails() {
 		while (true){
 			final String userAtHost = JOptionPane.showInputDialog(null,
@@ -129,7 +153,7 @@ public class JSshTty implements Tty {
 			break;
 		}	
 	}
-
+*/
 	public String getName(){
 		return "ConnectRunnable";
 	}
