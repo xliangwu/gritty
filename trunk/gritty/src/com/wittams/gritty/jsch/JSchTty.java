@@ -12,7 +12,6 @@ import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import com.jcraft.jsch.UserInfo;
 import com.wittams.gritty.Questioner;
 import com.wittams.gritty.Tty;
 import com.wittams.gritty.swing.standalone.Main;
@@ -95,21 +94,27 @@ public class JSchTty implements Tty {
 		JSch jsch  = new JSch();
 		Session session = null;
 		session = jsch.getSession(user, host, port);
-
+		
 		final QuestionerUserInfo ui = new QuestionerUserInfo(questioner);
-		if(password != null)
+		if(password != null){
+			session.setPassword(password);
 			ui.setPassword(password);
+		}
 		session.setUserInfo(ui);
 
 		final java.util.Properties config = new java.util.Properties();
 		config.put("compression.s2c", "zlib,none");
 		config.put("compression.c2s", "zlib,none");
-		session.setConfig(config);
+		configureSession(session, config);
 		session.setTimeout(5000);
 		session.connect();
 		session.setTimeout(0);
 		
 		return session;
+	}
+
+	protected void configureSession(Session session, final java.util.Properties config) {
+		session.setConfig(config);
 	}
 	
 	private void getAuthDetails(Questioner q){
