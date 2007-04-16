@@ -1,44 +1,18 @@
-ChangeLog of JCTerm
-====================================================================
-Last modified: Thu Feb 17 14:49:13 UTC 2005
+ChangeLog of Gritty
 
-	
-Changes since version 0.0.7:
-- JCTermMIDP supports public-key authentication.
-- JCTermMIDP can install remote private-keys by using remote exec on ssh2.
-- JCTermMIDP allow you to choose TCP port for the remote sshd;
-  user@host[:port]
+==============================
 
-	
-Changes since version 0.0.6:
-- added JCTermMIDP, which is for J2ME/CLDC/MIDP2.0 platform.
+16/04/2007
 
-	
-Changes since version 0.0.5:
-- allowed to choose ssh port; user@host:port
-- added JCTermJ2MECDC, which is for J2ME CDC platform.
+Sorted out embedding API, now fairly simple to use. 
+Split out swing and jsch dependent parts.
+Damage based drawing, very close to speed of gnome terminal or putty now. 
 
-	
-Changes since version 0.0.4:
-- improved vt100 terminal emulation.
-- added timeout in opening the socket. 
-- added 'About...' to menu-bar.
-- implemented JCTerm in AWT widgets(com.jcraft.jcterm.JCTermAWT).
+12/04/2007 0.01
 
-	
-Changes since version 0.0.3:
-- fixed a crash bug at the end of ssh session.
-- add the progress monitor on sftp session.
+Rewritten almost entirely, with scrolling, backbuffer for cut and paste, colors,
+emulation is of VT102. Eventual goal is xterm sans Tektronik. 
 
-	
-Changes since version 0.0.2:
-- added the packet compression support.
+09/04/2007
 
-	
-Changes since version 0.0.1:
-- function keys from F1 to F10.
-- arrow keys.
-- sftp support.
-- a switch to enable and disable anti-aliasing text.
-- some escape sequences support for vt100 emulation.
-- rendering speed is improved.
+Initially started with JCTerm
