@@ -77,7 +77,7 @@ public class TerminalWriter {
 	}
 
 	public void writeASCII(final byte[] chosenBuffer, final int start,
-			final int length) throws IOException {
+			final int length) {
 		backBuffer.lock();
 		try {
 			wrapLines();
@@ -92,22 +92,36 @@ public class TerminalWriter {
 		}
 	}
 
-	public void writeDoubleByte(final byte[] bytesOfChar) throws IOException,
-			UnsupportedEncodingException {
-
+	public void writeDoubleByte(final byte[] bytesOfChar) throws UnsupportedEncodingException {
+		writeString(new String(bytesOfChar, 0, 2, "EUC-JP"));
+	}
+	
+	public void writeString(String string) {
 		backBuffer.lock();
 		try {
 			wrapLines();
-			backBuffer.clearArea(cursorX, cursorY - 1, cursorX + 2, cursorY);
-			backBuffer.drawString(new String(bytesOfChar, 0, 2, "EUC-JP"), cursorX,
-					cursorY);
-			cursorX += 2;
+			backBuffer.clearArea(cursorX, cursorY - 1, cursorX + string.length(), cursorY);
+			backBuffer.drawString(string, cursorX, cursorY);
+			cursorX += string.length();
 			finishText();
 		} finally {
 			backBuffer.unlock();
 		}
 	}
-
+	
+	public void writeUnwrappedString(String string){
+		int length = string.length();
+		int off = 0;
+		while(off < length ){
+			int amountInLine = Math.min(distanceToLineEnd(), length - off);
+			writeString( string.substring(off, off + amountInLine) );
+			wrapLines();
+			scrollY();
+			off += amountInLine;
+		}
+	}
+	
+	
 	public void scrollY() {
 		backBuffer.lock();
 		try {
@@ -212,10 +226,13 @@ public class TerminalWriter {
 
 	public void eraseInLine(final ControlSequence args) {
 		// ESC [ Ps K
+		final int arg = args.getArg(0, 0);
+		eraseInLine(arg);
+	}
+	
+	public void eraseInLine(int arg){
 		backBuffer.lock();
 		try {
-			final int arg = args.getArg(0, 0);
-
 			switch (arg) {
 			case 0:
 				if (cursorX < termWidth) {
@@ -293,13 +310,14 @@ public class TerminalWriter {
 		try {
 			cursorX = 0;
 			if (cursorY == termHeight) {
-				scrollArea(scrollRegionTop - 1, scrollRegionBottom
-						- scrollRegionTop + 1, -1);
+				scrollArea(scrollRegionTop, scrollRegionBottom
+						- scrollRegionTop, -1);
 				backBuffer.clearArea(0, scrollRegionBottom - 1, termWidth,
 						scrollRegionBottom);
+			}else{
+				cursorY += 1;
 			}
-			cursorY += 1;
-			display.setCursor(0, cursorY);
+			display.setCursor(cursorX, cursorY);
 		} finally {
 			backBuffer.unlock();
 		}
@@ -471,4 +489,6 @@ public class TerminalWriter {
 			backBuffer.unlock();
 		}
 	}
+
+
 }

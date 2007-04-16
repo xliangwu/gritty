@@ -22,7 +22,6 @@
 
 package com.wittams.gritty.swing;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -56,7 +55,6 @@ import javax.swing.JComponent;
 import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.text.StyledEditorKit.UnderlineAction;
 
 import org.apache.log4j.Logger;
 
@@ -72,7 +70,7 @@ import com.wittams.gritty.StyledRunConsumer;
 import com.wittams.gritty.TerminalDisplay;
 import com.wittams.gritty.Util;
 
-public class TermPanel extends JComponent implements KeyListener, TerminalDisplay, ClipboardOwner, StyledRunConsumer {
+public class TermPanel extends JComponent implements TerminalDisplay, ClipboardOwner, StyledRunConsumer {
 	private static final Logger logger = Logger.getLogger(TermPanel.class);
 	private static final long serialVersionUID = -1048763516632093014L;
 	private static final double FPS = 20;
@@ -82,8 +80,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	private Graphics2D gfx;
 
 	private final Component termComponent = this;
-
-	private Font currentFont;
 
 	private Font normalFont;
 
@@ -122,6 +118,7 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	protected int clientScrollOrigin;
 	protected volatile int newClientScrollOrigin;
 	protected volatile boolean shouldDrawCursor;
+	private KeyListener keyHandler;
 	
 	
 	public TermPanel(BackBuffer backBuffer, ScrollBuffer scrollBuffer, StyleState styleState) {
@@ -130,10 +127,8 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		this.styleState = styleState;
 		brm.setRangeProperties(0, termSize.height, - scrollBuffer.getLineCount() , termSize.height, false );
 		
-		
-		currentFont = Font.decode("Monospaced-14");
-		normalFont = currentFont;
-		boldFont = currentFont.deriveFont(Font.BOLD);
+		normalFont = Font.decode("Monospaced-14");
+		boldFont = normalFont.deriveFont(Font.BOLD);
 		
 		establishFontMetrics();
 
@@ -143,7 +138,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 
 		setPreferredSize(new Dimension(getPixelWidth(), getPixelHeight()));
 		
-		setSize(getPixelWidth(), getPixelHeight());
 		setFocusable(true);
 		enableInputMethods(true);
 
@@ -205,9 +199,8 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		setDoubleBuffered(true);
 		redrawTimer.start();
 		repaint();
+		
 	}
-	
-	
 	
 	private Point panelToCharCoords(final Point p) {
 		return new Point(p.x / charSize.width, p.y / charSize.height + clientScrollOrigin);
@@ -228,7 +221,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 
 		if (selectionStart.y == selectionEnd.y) {
 			/* same line */
-			
 			top = selectionStart.x < selectionEnd.x ? selectionStart
 					: selectionEnd;
 			bottom = selectionStart.x >= selectionEnd.x ? selectionStart
@@ -243,7 +235,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		final StringBuffer selection = new StringBuffer();
 		if( top.y < 0 ){
 			final Point scrollEnd = bottom.y >= 0 ? new Point(termSize.width, -1) : bottom;
-			
 			scrollBuffer.pumpRuns(top.y, scrollEnd.y - top.y, 
 					new SelectionRunConsumer(selection, top, scrollEnd));
 			
@@ -256,6 +247,7 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		}
 		
 		if(selection.length() == 0) return;
+		
 		try {
 			clipBoard.setContents(new StringSelection(selection.toString()), this);
 		} catch (final IllegalStateException e) {
@@ -283,14 +275,12 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 				BufferedImage.TYPE_INT_RGB);
 		
 		gfx = img.createGraphics();
-		gfx.setFont(currentFont);
 		gfx.fillRect(0, 0, getPixelWidth(), getPixelHeight());
 		
 		if (oldImage != null){
 			gfx.drawImage(oldImage, 0, img.getHeight() - oldImage.getHeight(),
 					oldImage.getWidth(), oldImage.getHeight(), termComponent);
 		}
-
 	}
 
 	private void sizeTerminalFromComponent() {
@@ -307,6 +297,10 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	public void setEmulator(final Emulator emulator) {
 		this.emulator = emulator;
 		this.sizeTerminalFromComponent();
+	}
+	
+	public void setKeyHandler(final KeyListener keyHandler){
+		this.keyHandler = keyHandler;
 	}
 
 	public Dimension doResize(final Dimension newSize, final RequestOrigin origin) {
@@ -338,14 +332,14 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	private void establishFontMetrics() {
 		final BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
 		final Graphics2D graphics = img.createGraphics();
-		graphics.setFont(currentFont);
-		{
-			final FontMetrics fo = graphics.getFontMetrics();
-			descent = fo.getDescent();
-			charSize.width = fo.charWidth('@');
-			charSize.height = fo.getHeight() + lineSpace * 2;
-			descent += lineSpace;
-		}
+		graphics.setFont(normalFont);
+		
+		final FontMetrics fo = graphics.getFontMetrics();
+		descent = fo.getDescent();
+		charSize.width = fo.charWidth('@');
+		charSize.height = fo.getHeight() + lineSpace * 2;
+		descent += lineSpace;
+		
 		img.flush();
 		graphics.dispose();
 	}
@@ -355,65 +349,25 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		super.paintComponent(g);
 		if (img != null){
 			g.drawImage(img, 0, 0, termComponent);
-			reallyDrawCursor(g);
+			drawCursor(g);
 			drawSelection(g);
 		}
 	}
 
 	@Override
-	public void paint(final Graphics g) {
-		super.paint(g);
-	}
-
-	@Override
 	public void processKeyEvent(final KeyEvent e) {
-		// System.out.println(e);
 		final int id = e.getID();
-		if (id == KeyEvent.KEY_PRESSED)
-			keyPressed(e);
-		else if (id == KeyEvent.KEY_RELEASED) {
+		if (id == KeyEvent.KEY_PRESSED){
+			keyHandler.keyPressed(e);
+	    }else if (id == KeyEvent.KEY_RELEASED) {
 			/* keyReleased(e); */
-		} else if (id == KeyEvent.KEY_TYPED)
-			keyTyped(e);
+		} else if (id == KeyEvent.KEY_TYPED){
+			keyHandler.keyTyped(e);
+		}
 		e.consume();
 	}
 
-	public void keyPressed(final KeyEvent e) {
-		try {
-			final int keycode = e.getKeyCode();
-			final byte[] code = emulator.getCode(keycode);
-			if (code != null)
-				emulator.sendBytes(code);
-			else {
-				final char keychar = e.getKeyChar();
-				final byte[] obuffer = new byte[1];
-				if ((keychar & 0xff00) == 0) {
-					obuffer[0] = (byte) e.getKeyChar();
-					emulator.sendBytes(obuffer);
-				}
-			}
-		} catch (final IOException ex) {
-			logger.error("Error sending key to emulator", ex);
-		}
-	}
-
-	public void keyTyped(final KeyEvent e) {
-		final char keychar = e.getKeyChar();
-		if ((keychar & 0xff00) != 0) {
-			final char[] foo = new char[1];
-			foo[0] = keychar;
-			try {
-				final byte[] bytes = new String(foo).getBytes("EUC-JP");
-				emulator.sendBytes(bytes);
-			} catch (final IOException ex) {
-				logger.error("Error sending key to emulator", ex);
-			}
-		}
-	}
 	
-	/** Ignores key released events. */
-	public void keyReleased(final KeyEvent event) {
-	}
 
 	public int getPixelWidth() {
 		return charSize.width * termSize.width;
@@ -430,12 +384,8 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	public int getRowCount() {
 		return termSize.height;
 	}
-
-	public void drawCursor() {
-		
-	}
 	
-	public void reallyDrawCursor(Graphics g) {
+	public void drawCursor(Graphics g) {
 		final int y = (cursor.y - 1 - clientScrollOrigin);
 		if(y >= 0 && y < termSize.height ){
 			Style current = styleState.getCurrent();
@@ -515,7 +465,7 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 				     0, -dyPix );
 		
 		if(dy < 0){
-			//Scrolling up; Copied down
+			// Scrolling up; Copied down
 			// New area at the top to be filled in - can only be from scroll buffer
 			//
 			
@@ -591,9 +541,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		}
 	}
 	
-	
-	
-	
 	public void scrollArea(final int y, final int h, int dy) {
 		if( dy < 0 ){ 
 			//Moving lines off the top of the screen
@@ -650,18 +597,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 	
 	final PendingScrolls pendingScrolls = new PendingScrolls();
 	
-	public void clearArea(final int x1, final int y1, final int x2, final int y2) {
-		backBuffer.clearArea(x1, y1, x2, y2);
-	}
-
-	public void drawBytes(final byte[] buf, final int s, final int len, final int x, final int y) {
-		backBuffer.drawBytes(buf, s, len, x, y);
-	}
-
-	public void drawString(final String str, final int x, final int y) {
-		backBuffer.drawString(str, x, y);
-	}
-
 	public void setCursor(final int x, final int y) {
 		cursor.x = x;
 		cursor.y = y;
@@ -685,14 +620,6 @@ public class TermPanel extends JComponent implements KeyListener, TerminalDispla
 		final RenderingHints hints = new RenderingHints(
 				RenderingHints.KEY_TEXT_ANTIALIASING, mode);
 		gfx.setRenderingHints(hints);
-	}
-
-	public void setBold(final boolean val) {
-		if (val)
-			currentFont = boldFont;
-		else
-			currentFont = normalFont;
-		gfx.setFont(currentFont);
 	}
 
 	public BoundedRangeModel getBoundedRangeModel() {

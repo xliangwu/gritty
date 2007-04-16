@@ -130,7 +130,7 @@ public class BackBuffer {
 				logger.debug("Attempt to draw line out of bounds: " + adjY + " at (" + x + "," + y + ")");
 			return;
 		}
-		str.getChars(0, str.length() - 1, buf, adjY * width + x);
+		str.getChars(0, str.length(), buf, adjY * width + x);
 		for(int i = 0; i < str.length(); i++ ){
 			final int location = adjY * width + x + i;
 			styleBuf[location] = styleState.getCurrent();

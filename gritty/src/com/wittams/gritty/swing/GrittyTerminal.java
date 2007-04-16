@@ -35,6 +35,7 @@ public class GrittyTerminal extends JPanel{
 	private Thread emuThread;
 	
 	private AtomicBoolean sessionRunning = new AtomicBoolean();
+	private PreConnectHandler preconnectHandler;
 	
 	public static enum BufferType{
 		Back(){ 
@@ -69,6 +70,9 @@ public class GrittyTerminal extends JPanel{
 		scrollBuffer = new ScrollBuffer();
 		
 		termPanel = new TermPanel(backBuffer, scrollBuffer, styleState);
+		terminalWriter = new TerminalWriter(termPanel, backBuffer, styleState);
+		preconnectHandler = new PreConnectHandler(terminalWriter);
+		termPanel.setKeyHandler(preconnectHandler);
 		scrollBar = new JScrollBar();
 		
 		add(termPanel, BorderLayout.CENTER );
@@ -88,7 +92,7 @@ public class GrittyTerminal extends JPanel{
 	public void setTty(Tty tty){
 		this.tty = tty;
 		termIOBuffer = new TtyChannel(tty);
-		terminalWriter = new TerminalWriter(termPanel, backBuffer, styleState);
+		
 		emulator = new Emulator(terminalWriter, termIOBuffer);
 		this.termPanel.setEmulator(emulator);
 	}
@@ -111,13 +115,17 @@ public class GrittyTerminal extends JPanel{
 			try{
 				sessionRunning.set(true);
 				Thread.currentThread().setName(tty.getName());
-				tty.init();
-				Thread.currentThread().setName(tty.getName());
-				emulator.start();
-				
+				if(tty.init(preconnectHandler) ){
+					Thread.currentThread().setName(tty.getName());
+					termPanel.setKeyHandler(new ConnectedKeyHandler(emulator));
+					emulator.start();
+				}
 			}finally{
-				tty.close();
+				try{
+					tty.close();
+				}catch(Exception e){}
 				sessionRunning.set(false);
+				termPanel.setKeyHandler(preconnectHandler);
 			}
 		}		
 	}
