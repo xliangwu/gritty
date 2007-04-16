@@ -54,7 +54,17 @@ class QuestionerUserInfo implements UserInfo, UIKeyboardInteractive{
 
 	public String[] promptKeyboardInteractive(final String destination, final String name,
 			final String instruction, final String[] prompt, final boolean[] echo){
-		return null ;
+		int len = prompt.length;
+		String [] results = new String[len];
+		if(destination != null && destination.length() > 0 ) questioner.showMessage(destination);
+		if(name != null && name.length() > 0 ) questioner.showMessage(name);
+		questioner.showMessage(instruction);
+		for(int i = 0; i < len ; i++ ){
+			String promptStr = prompt[i];
+			results[i] = echo[i] ? questioner.questionVisible(promptStr, null) :
+								   questioner.questionHidden(promptStr) ;
+		}
+		return results;
 	}
 
 }
