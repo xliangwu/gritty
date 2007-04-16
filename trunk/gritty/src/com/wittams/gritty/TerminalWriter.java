@@ -5,7 +5,6 @@ package com.wittams.gritty;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.EnumSet;
