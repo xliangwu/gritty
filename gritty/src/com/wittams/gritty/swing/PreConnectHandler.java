@@ -9,7 +9,6 @@ import com.wittams.gritty.TerminalWriter;
 public class PreConnectHandler implements Questioner, KeyListener {
 	private Object sync = new Object();
 	private TerminalWriter tw;
-	private String question;
 	private StringBuffer answer;
 	private boolean visible;
 	
@@ -29,7 +28,6 @@ public class PreConnectHandler implements Questioner, KeyListener {
 
 	public String questionVisible(String question, String defValue){
 		synchronized (sync) {
-			this.question = question;
 			tw.writeUnwrappedString(question);
 			answer = new StringBuffer();
 			if(defValue != null){ 

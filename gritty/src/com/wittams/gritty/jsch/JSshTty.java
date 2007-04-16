@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.swing.JOptionPane;
-
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -124,36 +122,6 @@ public class JSshTty implements Tty {
 		}
 	}
 	
-/*
-	private void getAuthDetails() {
-		while (true){
-			final String userAtHost = JOptionPane.showInputDialog(null,
-					"Enter username@hostname", user + "@"
-							+ host);
-			if (userAtHost == null)
-				return;
-			final String user = userAtHost.substring(0, userAtHost
-					.indexOf('@'));
-			String host = userAtHost
-					.substring(userAtHost.indexOf('@') + 1);
-			if (host == null || host.length() == 0)
-				continue;
-			if (host.indexOf(':') != -1) {
-				try {
-					final String portString = host.substring(host
-							.indexOf(':') + 1);
-					port = Integer.parseInt(portString);
-				} catch (final NumberFormatException eee) {
-					Main.logger.error("parsing port", eee);
-				}
-				host = host.substring(0, host.indexOf(':'));
-			}
-			this.user = user;
-			this.host = host;
-			break;
-		}	
-	}
-*/
 	public String getName(){
 		return "ConnectRunnable";
 	}
