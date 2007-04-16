@@ -21,7 +21,6 @@ class QuestionerUserInfo implements UserInfo, UIKeyboardInteractive{
 	}
 
 	public String getPassword(){
-		// TODO Auto-generated method stub
 		return password;
 	}
 	

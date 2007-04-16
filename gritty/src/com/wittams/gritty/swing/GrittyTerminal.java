@@ -2,10 +2,12 @@ package com.wittams.gritty.swing;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
+import javax.swing.SwingUtilities;
 
 import org.apache.log4j.Logger;
 
@@ -28,7 +30,7 @@ public class GrittyTerminal extends JPanel{
 	private final JScrollBar scrollBar;
 	
 	private Tty tty;
-	private TtyChannel termIOBuffer;
+	private TtyChannel ttyChannel;
 	private TerminalWriter terminalWriter;
 	private Emulator emulator;
 	
@@ -91,9 +93,9 @@ public class GrittyTerminal extends JPanel{
 
 	public void setTty(Tty tty){
 		this.tty = tty;
-		termIOBuffer = new TtyChannel(tty);
+		ttyChannel = new TtyChannel(tty);
 		
-		emulator = new Emulator(terminalWriter, termIOBuffer);
+		emulator = new Emulator(terminalWriter, ttyChannel);
 		this.termPanel.setEmulator(emulator);
 	}
 
@@ -117,7 +119,12 @@ public class GrittyTerminal extends JPanel{
 				Thread.currentThread().setName(tty.getName());
 				if(tty.init(preconnectHandler) ){
 					Thread.currentThread().setName(tty.getName());
-					termPanel.setKeyHandler(new ConnectedKeyHandler(emulator));
+					SwingUtilities.invokeLater(new Runnable(){
+						public void run() {
+							termPanel.setKeyHandler(new ConnectedKeyHandler(emulator));
+							termPanel.requestFocusInWindow();
+						}
+					});
 					emulator.start();
 				}
 			}finally{
@@ -137,5 +144,11 @@ public class GrittyTerminal extends JPanel{
 	@Override
 	public Dimension getPreferredSize(){
 		return new Dimension( termPanel.getPixelWidth() + scrollBar.getPreferredSize().width, termPanel.getPixelHeight());
+	}
+
+	public void sendCommand(String string) throws IOException{
+		if(sessionRunning.get()){
+			ttyChannel.sendBytes(string.getBytes());
+		}
 	}
 }
