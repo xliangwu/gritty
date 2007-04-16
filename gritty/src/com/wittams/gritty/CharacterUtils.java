@@ -43,7 +43,7 @@ public class CharacterUtils {
 	
 	private CharacterUtils(){}
 	
-	private static final String[] NONPRINTING = { "NUL", "SOH", "STX", "ETX", "EOT", "ENQ",
+	private static final String[] NONPRINTING_NAMES = { "NUL", "SOH", "STX", "ETX", "EOT", "ENQ",
 		"ACK", "BEL", "BS", "TAB", "LF", "VT", "FF", "CR", "S0", "S1",
 		"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB", "CAN",
 		"EM", "SUB", "ESC", "FS", "GS", "RS", "US" };
@@ -57,7 +57,7 @@ public class CharacterUtils {
 	public static CharacterType appendChar(final StringBuffer sb, final CharacterType last, final char c) {
 		if (c <= 0x1F) {
 			sb.append(' ');
-			sb.append(CharacterUtils.NONPRINTING[c]);
+			sb.append(CharacterUtils.NONPRINTING_NAMES[c]);
 			return CharacterType.NONPRINTING;
 		} else if (c == DEL){
 			sb.append(" DEL");
@@ -81,9 +81,7 @@ public class CharacterUtils {
 		}
 	}
 	
-
 	public static byte[] deviceAttributesResponse = makeCode(ESC, '[', '?', '6', 'c');
-
 	
 	private static final Map<Integer, byte[]> codes = new HashMap<Integer, byte[]>();
 	
