@@ -9,7 +9,7 @@ import com.wittams.gritty.Questioner;
 
 class QuestionerUserInfo implements UserInfo, UIKeyboardInteractive{
 	private Questioner questioner;
-	private String passwd;
+	private String password;
 	private String passPhrase;
 	
 	public QuestionerUserInfo(Questioner questioner){
@@ -22,7 +22,11 @@ class QuestionerUserInfo implements UserInfo, UIKeyboardInteractive{
 
 	public String getPassword(){
 		// TODO Auto-generated method stub
-		return passwd;
+		return password;
+	}
+	
+	public void setPassword(String password) {
+		this.password = password;
 	}
 
 	public boolean promptPassphrase(String message){
@@ -31,7 +35,7 @@ class QuestionerUserInfo implements UserInfo, UIKeyboardInteractive{
 	}
 
 	public boolean promptPassword(String message){
-		passwd = questioner.questionHidden(message + ":");
+		password = questioner.questionHidden(message + ":");
 		return true;
 	}
 
@@ -53,4 +57,5 @@ class QuestionerUserInfo implements UserInfo, UIKeyboardInteractive{
 			final String instruction, final String[] prompt, final boolean[] echo){
 		return null ;
 	}
+
 }

@@ -17,7 +17,7 @@ import com.wittams.gritty.Questioner;
 import com.wittams.gritty.Tty;
 import com.wittams.gritty.swing.standalone.Main;
 
-public class JSshTty implements Tty { 
+public class JSchTty implements Tty { 
 	private InputStream in = null;
 	private OutputStream out = null;
 	private Session session;
@@ -26,9 +26,22 @@ public class JSshTty implements Tty {
 	
 	private String user = null;
 	private String host = null;
+	private String password = null;
 	
 	private Dimension pendingTermSize;
 	private Dimension pendingPixelSize;
+	
+	
+	
+	public JSchTty(){
+		
+	}
+	
+	public JSchTty(String host, String user, String password){
+		this.host = host;
+		this.user = user;
+		this.password = password;
+	}
 	
 	public void resize(Dimension termSize, Dimension pixelSize) {
 			pendingTermSize = termSize;
@@ -83,7 +96,9 @@ public class JSshTty implements Tty {
 		Session session = null;
 		session = jsch.getSession(user, host, port);
 
-		final UserInfo ui = new QuestionerUserInfo(questioner);
+		final QuestionerUserInfo ui = new QuestionerUserInfo(questioner);
+		if(password != null)
+			ui.setPassword(password);
 		session.setUserInfo(ui);
 
 		final java.util.Properties config = new java.util.Properties();

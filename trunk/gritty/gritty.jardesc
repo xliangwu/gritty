@@ -1,16 +1,16 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <jardesc>
-    <jar path="c:/jnlptest/gritty-0.01.jar"/>
-    <options buildIfNeeded="true" compress="true" descriptionLocation="/gritty/gritty.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
-    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
-    <selectedProjects/>
-    <manifest generateManifest="false" mainClassHandleIdentifier="=gritty/src&lt;com.wittams.gritty{Main.java[Main" manifestLocation="/gritty/MANIFEST" manifestVersion="1.0" reuseManifest="true" saveManifest="true" usesManifest="true">
-        <sealing sealJar="false">
-            <packagesToSeal/>
-            <packagesToUnSeal/>
-        </sealing>
-    </manifest>
-    <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
-        <javaElement handleIdentifier="=gritty/src"/>
-    </selectedElements>
+<jar path="gritty/gritty-0.02.jar"/>
+<options buildIfNeeded="true" compress="true" descriptionLocation="/gritty/gritty.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+<storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+<selectedProjects/>
+<manifest generateManifest="false" mainClassHandleIdentifier="=gritty/src&lt;com.wittams.gritty.swing.standalone{Main.java[Main" manifestLocation="/gritty/MANIFEST" manifestVersion="1.0" reuseManifest="true" saveManifest="true" usesManifest="true">
+<sealing sealJar="false">
+<packagesToSeal/>
+<packagesToUnSeal/>
+</sealing>
+</manifest>
+<selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
+<javaElement handleIdentifier="=gritty/src"/>
+</selectedElements>
 </jardesc>

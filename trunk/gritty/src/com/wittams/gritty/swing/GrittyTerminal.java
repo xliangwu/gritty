@@ -60,7 +60,7 @@ public class GrittyTerminal extends JPanel{
 		};
 		
 		abstract String getValue(GrittyTerminal term );
-	};
+	}
 	
 	public GrittyTerminal(){
 		super(new BorderLayout());

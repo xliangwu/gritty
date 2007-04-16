@@ -47,7 +47,7 @@ public class BufferPanel extends JPanel {
 			public void itemStateChanged(final ItemEvent e) {
 				update();
 			}
-		};
+		}
 		final Updater up = new Updater();
 		chooser.addItemListener(up);
 		final Timer timer = new Timer(1000, up);
