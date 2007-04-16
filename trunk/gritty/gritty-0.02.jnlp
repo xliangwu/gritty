@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jnlp spec="1.0+" codebase="http://gritty.googlecode.com/files/">
+<information>
+  <title>Gritty</title>
+  <vendor>Robert Wittams</vendor>
+  <homepage href="http://code.google.com/p/gritty/" />
+  <description>Java SSH client</description>
+</information>
+<offline-allowed/>
+<security>
+  <j2ee-application-client-permissions/>
+</security>
+<resources>
+  <j2se version="1.5+" />
+  <jar href="gritty-0.02.jar"/>
+  <jar href="log4j-1.2.14.jar"/>
+  <jar href="jsch-0.1.32.jar"/>
+  <jar href="jzlib-1.07.jar"/>
+</resources>
+<application-desc />
+</jnlp>
