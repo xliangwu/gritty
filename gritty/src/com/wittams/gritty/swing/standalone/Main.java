@@ -18,7 +18,7 @@ import org.apache.log4j.Logger;
 
 import com.wittams.gritty.RequestOrigin;
 import com.wittams.gritty.ResizePanelDelegate;
-import com.wittams.gritty.jsch.JSshTty;
+import com.wittams.gritty.jsch.JSchTty;
 import com.wittams.gritty.swing.BufferPanel;
 import com.wittams.gritty.swing.GrittyTerminal;
 import com.wittams.gritty.swing.TermPanel;
@@ -79,7 +79,7 @@ public class Main {
 
 	public void openSession() {
 		if(!terminal.isSessionRunning()){
-			terminal.setTty(new JSshTty());
+			terminal.setTty(new JSchTty());
 			terminal.start();
 		}
 	}
