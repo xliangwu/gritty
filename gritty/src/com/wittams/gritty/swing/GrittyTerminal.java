@@ -151,4 +151,15 @@ public class GrittyTerminal extends JPanel{
 			ttyChannel.sendBytes(string.getBytes());
 		}
 	}
+	
+	@Override
+	public boolean requestFocusInWindow() {
+		SwingUtilities.invokeLater( new Runnable(){
+			public void run() {
+				termPanel.requestFocusInWindow();
+			}
+		});
+		return super.requestFocusInWindow();
+	}
+	
 }
