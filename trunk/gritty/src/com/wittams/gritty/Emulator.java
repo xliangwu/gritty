@@ -55,7 +55,7 @@ public class Emulator {
 
 	void go() {
 		try {
-			while (true){
+			while ( ! Thread.currentThread().isInterrupted() ){
 				singleIteration();	
 			}
 		} catch (final InterruptedIOException e){
