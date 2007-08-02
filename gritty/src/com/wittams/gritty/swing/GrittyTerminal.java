@@ -108,6 +108,11 @@ public class GrittyTerminal extends JPanel{
 		}
 	}
 	
+	public void stop(){
+		if( sessionRunning.get() && emuThread != null )
+			emuThread.interrupt();
+	}
+	
 	public boolean isSessionRunning(){
 		return sessionRunning.get();
 	}

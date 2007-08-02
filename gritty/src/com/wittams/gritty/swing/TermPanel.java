@@ -22,6 +22,7 @@
 
 package com.wittams.gritty.swing;
 
+import java.awt.AlphaComposite;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -147,14 +148,14 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 			@Override
 			public void mouseDragged(final MouseEvent e) {
 				final Point charCoords = panelToCharCoords(e.getPoint());
-
-				if (!selectionInProgress) {
-					selectionStart = charCoords;
-					selectionInProgress = true;
-					repaint();
-				}
-				selectionEnd = charCoords;
 				
+				if (!selectionInProgress) {
+					selectionStart = new Point(charCoords);
+					selectionInProgress = true;
+				}
+				repaint();
+				selectionEnd = charCoords;
+				selectionEnd.x = Math.min(selectionEnd.x + 1, termSize.width );
 			}
 		});
 
@@ -203,7 +204,7 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 	}
 	
 	private Point panelToCharCoords(final Point p) {
-		return new Point(p.x / charSize.width, p.y / charSize.height + clientScrollOrigin);
+		return new Point(p.x / charSize.width , p.y / charSize.height + clientScrollOrigin);
 	}
 
 	void setUpClipboard() {
@@ -346,11 +347,12 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 
 	@Override
 	public void paintComponent(final Graphics g) {
+		Graphics2D gfx = (Graphics2D) g;
 		super.paintComponent(g);
 		if (img != null){
-			g.drawImage(img, 0, 0, termComponent);
-			drawCursor(g);
-			drawSelection(g);
+			gfx.drawImage(img, 0, 0, termComponent);
+			drawCursor(gfx);
+			drawSelection(gfx);
 		}
 	}
 
@@ -385,7 +387,7 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 		return termSize.height;
 	}
 	
-	public void drawCursor(Graphics g) {
+	public void drawCursor(Graphics2D g) {
 		final int y = (cursor.y - 1 - clientScrollOrigin);
 		if(y >= 0 && y < termSize.height ){
 			Style current = styleState.getCurrent();
@@ -396,7 +398,7 @@ public class TermPanel extends JComponent implements TerminalDisplay, ClipboardO
 		}
 	}
 
-	public void drawSelection(Graphics g) {
+	public void drawSelection(Graphics2D g) {
 		/* which is the top one */
 		Point top;
 		Point bottom;
